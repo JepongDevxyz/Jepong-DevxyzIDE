@@ -42,6 +42,11 @@ PY
 grep -q 'COTG_PACKAGE_NAME="com.jepongdevxyz.idebuild"' "$SRC/common.sh"
 grep -q '"aapt"' "$SRC/packages.sh"
 
+# Use the pinned Termux toolchain bootstrap. It downloads the exact SDK/NDK
+# revisions required by the pinned package source and verifies its pinned
+# official Google SHA-256 values before the native package build starts.
+"$SRC/termux-packages/scripts/setup-android-sdk.sh"
+
 # Build the pinned Android-native package set for aarch64. This includes
 # OpenJDK 21 and the aapt package, whose Termux subpackage provides aapt2.
 (

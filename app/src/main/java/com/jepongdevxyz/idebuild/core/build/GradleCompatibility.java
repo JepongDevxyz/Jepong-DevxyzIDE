@@ -1,6 +1,6 @@
 package com.jepongdevxyz.idebuild.core.build;
 
-/** Minimal Android Gradle Plugin -> Gradle compatibility mapping used for internal runtime selection. */
+/** Minimal Android Gradle Plugin to Gradle compatibility mapping used for internal runtime selection. */
 public final class GradleCompatibility {
     private GradleCompatibility() {}
 

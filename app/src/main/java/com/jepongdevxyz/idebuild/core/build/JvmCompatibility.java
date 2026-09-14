@@ -1,6 +1,5 @@
 package com.jepongdevxyz.idebuild.core.build;
 
-import com.jepongdevxyz.idebuild.core.toolchain.RuntimeLayout;
 import java.io.File;
 
 public final class JvmCompatibility {
@@ -29,16 +28,24 @@ public final class JvmCompatibility {
         if (appFilesDir == null) return 0;
         int preferred = recommendedJavaMajor(agpVersion, gradleVersion);
         int minimum = minimumJavaMajorForAgp(agpVersion);
-        if (installed(appFilesDir, preferred) && preferred >= minimum && canRunGradle(preferred, gradleVersion)) return preferred;
+        if (installedExact(appFilesDir, preferred) && preferred >= minimum && canRunGradle(preferred, gradleVersion)) return preferred;
         for (int candidate : CANDIDATES) {
             if (candidate < minimum || candidate == preferred) continue;
-            if (installed(appFilesDir, candidate) && canRunGradle(candidate, gradleVersion)) return candidate;
+            if (installedExact(appFilesDir, candidate) && canRunGradle(candidate, gradleVersion)) return candidate;
         }
         return 0;
     }
 
-    private static boolean installed(File appFilesDir, int javaMajor) {
-        return RuntimeLayout.findJavaHome(appFilesDir, javaMajor) != null;
+    /** Checks whether this exact Java major is installed, without treating a newer JDK as the same major. */
+    private static boolean installedExact(File appFilesDir, int javaMajor) {
+        File[] candidates = {
+                new File(appFilesDir, "toolchains/jdk" + javaMajor + "/bin/java"),
+                new File(appFilesDir, "usr/lib/jvm/java-" + javaMajor + "-openjdk/bin/java"),
+                new File(appFilesDir, "usr/opt/openjdk-" + javaMajor + ".0/bin/java"),
+                new File(appFilesDir, "usr/opt/openjdk-" + javaMajor + "/bin/java")
+        };
+        for (File candidate : candidates) if (candidate.isFile()) return true;
+        return false;
     }
 
     public static boolean canRunGradle(int javaMajor, String gradleVersion) {

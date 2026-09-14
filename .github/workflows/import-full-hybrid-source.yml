@@ -38,6 +38,14 @@ jobs:
           rm -rf app docs host-tests tools runtime-builder gradle
           rm -f build.gradle settings.gradle gradle.properties gradlew gradlew.bat bootstrap-wrapper.sh README.md TEST_REPORT.md TEST_REPORT_AIDE_FIX.md TEST_REPORT_HYBRID.md AIDE_TEST_EDITION.md THIRD_PARTY_NOTICES.md
           unzip -q /tmp/full-source.zip -d .
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/AndroidManifest.xml')
+          s = p.read_text()
+          if 'package="com.jepongdevxyz.idebuild"' not in s:
+              s = s.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">', '<manifest package="com.jepongdevxyz.idebuild" xmlns:android="http://schemas.android.com/apk/res/android">', 1)
+              p.write_text(s)
+          PY
           rm -rf bootstrap
           rm -f .github/workflows/import-full-hybrid-source.yml
 
@@ -49,7 +57,7 @@ jobs:
           test -s app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java
           test -s app/src/main/java/com/jepongdevxyz/idebuild/core/ProjectRootDetector.java
           test -s app/src/main/java/com/jepongdevxyz/idebuild/core/toolchain/RuntimePackDownloader.java
-          grep -F 'applicationId "com.jepongdevxyz.idebuild"' app/build.gradle
+          grep -F "applicationId 'com.jepongdevxyz.idebuild'" app/build.gradle
           grep -F 'package="com.jepongdevxyz.idebuild"' app/src/main/AndroidManifest.xml
           grep -F 'DevxyzIDE' app/src/main/res/values/strings.xml
 

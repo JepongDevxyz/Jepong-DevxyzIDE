@@ -76,10 +76,16 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - name: Install native package builder prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y git curl wget zip unzip xz-utils tar rsync python3 gpg
+          java -version
+          test -x "$JAVA_HOME/bin/java"
           docker --version
       - name: Build DevxyzIDE ARM64 bootstrap
         run: |

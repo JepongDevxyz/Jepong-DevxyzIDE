@@ -17,7 +17,7 @@ public final class HybridHostTest {
         testAgp87RequiresGradle89(); passed++;
         testCompatibleInternalGradleSelection(); passed++;
         testModernProjectRequirements(); passed++;
-        testModernRuntimeMissingJdk(); passed++;
+        testModernRuntimeMissingComponents(); passed++;
         testModernRuntimeComplete(); passed++;
         System.out.println("HYBRID HOST TESTS PASSED: " + passed + "/9");
     }
@@ -73,12 +73,16 @@ public final class HybridHostTest {
         eq(Integer.valueOf(35), Integer.valueOf(req.getCompileSdk()), "compile SDK");
     }
 
-    private static void testModernRuntimeMissingJdk() throws Exception {
+    private static void testModernRuntimeMissingComponents() throws Exception {
         File runtime = temp("runtime-missing");
         ProjectRequirements req = modernRequirements();
         RuntimeCapabilities capabilities = RuntimeCapabilities.inspect(runtime, req);
         if (capabilities.isReady()) throw new AssertionError("missing runtime unexpectedly ready");
-        eq("JDK 17 required", capabilities.getMissingRequirement(), "missing JDK message");
+        String missing = capabilities.getMissingRequirement();
+        contains(missing, "JDK 17 required", "missing JDK message");
+        contains(missing, "Gradle 8.9+ required", "missing Gradle message");
+        contains(missing, "Android SDK platform 35 missing", "missing SDK message");
+        contains(missing, "Android build-tools/aapt2 missing", "missing aapt2 message");
     }
 
     private static void testModernRuntimeComplete() throws Exception {
@@ -111,4 +115,5 @@ public final class HybridHostTest {
     private static void touch(File f) throws IOException { File p=f.getParentFile(); if(p!=null) p.mkdirs(); new FileOutputStream(f).close(); }
     private static void write(File f, String text) throws IOException { File p=f.getParentFile(); if(p!=null) p.mkdirs(); FileOutputStream out=new FileOutputStream(f); try { out.write(text.getBytes("UTF-8")); } finally { out.close(); } }
     private static void eq(Object a,Object b,String m){ if(a==null?b!=null:!a.equals(b)) throw new AssertionError(m+": "+a+" != "+b); }
+    private static void contains(String text,String part,String m){ if(text==null || text.indexOf(part)<0) throw new AssertionError(m+": "+text); }
 }

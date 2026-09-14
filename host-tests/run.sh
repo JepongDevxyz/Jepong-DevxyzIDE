@@ -18,4 +18,5 @@ java -cp "$OUT" RuntimeCatalogHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
 python3 "$ROOT/host-tests/bootstrap_stamp_test.py"
+python3 "$ROOT/host-tests/runtime_builder_contract_test.py"
 rm -rf "$OUT"

@@ -59,7 +59,17 @@ jobs:
       - name: Build debug APK
         shell: bash
         run: |
-          gradle --no-daemon --stacktrace clean assembleDebug
+          set -o pipefail
+          gradle --no-daemon --stacktrace clean assembleDebug 2>&1 | tee gradle-build.log
+
+      - name: Upload Gradle diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevxyzIDE-gradle-build-log
+          path: gradle-build.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Verify APK exists and ZIP structure is valid
         shell: bash

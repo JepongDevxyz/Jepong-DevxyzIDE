@@ -3,8 +3,6 @@ name: Import Full HYBRID DevxyzIDE Source
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'bootstrap/DevxyzIDE-v0.6-FULL-HYBRID-SOURCE-IMPORT.zip'
   workflow_dispatch:
 
 permissions:

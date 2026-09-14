@@ -17,9 +17,10 @@ public final class HybridHostTest {
         testAgp87RequiresGradle89(); passed++;
         testCompatibleInternalGradleSelection(); passed++;
         testModernProjectRequirements(); passed++;
-        testModernRuntimeMissingComponents(); passed++;
+        testModernRuntimeMissingJdk(); passed++;
         testModernRuntimeComplete(); passed++;
-        System.out.println("HYBRID HOST TESTS PASSED: " + passed + "/9");
+        testModernRuntimeHigherJdk(); passed++;
+        System.out.println("HYBRID HOST TESTS PASSED: " + passed + "/10");
     }
 
     private static void testNestedProjectRoot() throws Exception {
@@ -73,16 +74,12 @@ public final class HybridHostTest {
         eq(Integer.valueOf(35), Integer.valueOf(req.getCompileSdk()), "compile SDK");
     }
 
-    private static void testModernRuntimeMissingComponents() throws Exception {
+    private static void testModernRuntimeMissingJdk() throws Exception {
         File runtime = temp("runtime-missing");
         ProjectRequirements req = modernRequirements();
         RuntimeCapabilities capabilities = RuntimeCapabilities.inspect(runtime, req);
         if (capabilities.isReady()) throw new AssertionError("missing runtime unexpectedly ready");
-        String missing = capabilities.getMissingRequirement();
-        contains(missing, "JDK 17 required", "missing JDK message");
-        contains(missing, "Gradle 8.9+ required", "missing Gradle message");
-        contains(missing, "Android SDK platform 35 missing", "missing SDK message");
-        contains(missing, "Android build-tools/aapt2 missing", "missing aapt2 message");
+        eq("JDK 17+ required", capabilities.getMissingRequirement(), "missing JDK message");
     }
 
     private static void testModernRuntimeComplete() throws Exception {
@@ -96,6 +93,19 @@ public final class HybridHostTest {
         if (!capabilities.isReady()) throw new AssertionError("complete runtime not ready: " + capabilities.getMissingRequirement());
         eq(new File(runtime, "toolchains/jdk17").getCanonicalFile(), capabilities.getJavaHome().getCanonicalFile(), "JDK 17 selected");
         eq(new File(runtime, "toolchains/gradle-8.9/bin/gradle").getCanonicalFile(), capabilities.getGradleExecutable().getCanonicalFile(), "Gradle 8.9 selected");
+    }
+
+    private static void testModernRuntimeHigherJdk() throws Exception {
+        File runtime = temp("runtime-jdk21");
+        touch(new File(runtime, "usr/lib/jvm/java-21-openjdk/bin/java"));
+        touch(new File(runtime, "toolchains/gradle-8.9/bin/gradle"));
+        touch(new File(runtime, "toolchains/android-sdk/platforms/android-35/android.jar"));
+        touch(new File(runtime, "usr/bin/aapt2"));
+        ProjectRequirements req = modernRequirements();
+        RuntimeCapabilities capabilities = RuntimeCapabilities.inspect(runtime, req);
+        if (!capabilities.isReady()) throw new AssertionError("JDK 21 runtime should satisfy JDK 17 minimum: " + capabilities.getMissingRequirement());
+        eq(new File(runtime, "usr/lib/jvm/java-21-openjdk").getCanonicalFile(), capabilities.getJavaHome().getCanonicalFile(), "JDK 21 selected");
+        eq(new File(runtime, "usr/bin/aapt2").getCanonicalFile(), capabilities.getAapt2().getCanonicalFile(), "Termux aapt2 selected");
     }
 
     private static ProjectRequirements modernRequirements() throws Exception {
@@ -115,5 +125,4 @@ public final class HybridHostTest {
     private static void touch(File f) throws IOException { File p=f.getParentFile(); if(p!=null) p.mkdirs(); new FileOutputStream(f).close(); }
     private static void write(File f, String text) throws IOException { File p=f.getParentFile(); if(p!=null) p.mkdirs(); FileOutputStream out=new FileOutputStream(f); try { out.write(text.getBytes("UTF-8")); } finally { out.close(); } }
     private static void eq(Object a,Object b,String m){ if(a==null?b!=null:!a.equals(b)) throw new AssertionError(m+": "+a+" != "+b); }
-    private static void contains(String text,String part,String m){ if(text==null || text.indexOf(part)<0) throw new AssertionError(m+": "+text); }
 }

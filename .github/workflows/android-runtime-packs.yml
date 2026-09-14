@@ -79,7 +79,8 @@ jobs:
       - name: Install native package builder prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y git curl wget zip unzip xz-utils tar rsync python3 gpg docker.io
+          sudo apt-get install -y git curl wget zip unzip xz-utils tar rsync python3 gpg
+          docker --version
       - name: Build DevxyzIDE ARM64 bootstrap
         run: |
           mkdir -p tools/runtime-builder/out/logs
@@ -120,15 +121,12 @@ jobs:
         run: |
           cd tools/runtime-builder
           python3 generate-manifest.py --out out/runtime-manifest.properties out/final/devxyz-bootstrap-aarch64.zip out/final/gradle-8.9.devxyz-toolchain.zip out/final/android-sdk-35.devxyz-toolchain.zip
-          cd out/final
-          sha256sum ../../SHA256SUMS >/dev/null 2>&1 || true
-          cd ..
           while read -r sha file; do
             file="${file#* }"
             file="${file# }"
-            actual="$(sha256sum "final/$file" | awk '{print $1}')"
+            actual="$(sha256sum "out/final/$file" | awk '{print $1}')"
             test "$sha" = "$actual"
-          done < SHA256SUMS
+          done < out/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
           name: devxyz-runtime-manifest

@@ -1,8 +1,11 @@
 package com.jepongdevxyz.idebuild.core.toolchain;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.io.FileFilter;
 
 /** Resolves both DevxyzIDE pack layout and Termux-style app-private runtime layout. */
@@ -28,18 +31,42 @@ public final class RuntimeLayout {
         return new RuntimeLayout(javaHome, sdk, gradle, aapt2);
     }
 
+    /** Finds the lowest installed JDK whose major version satisfies the requested minimum. */
     public static File findJavaHome(File appFilesDir, int javaMajor) {
         if (appFilesDir == null || javaMajor <= 0) return null;
-        File[] candidates = {
-                new File(appFilesDir, "toolchains/jdk" + javaMajor),
-                new File(appFilesDir, "usr/lib/jvm/java-" + javaMajor + "-openjdk"),
-                new File(appFilesDir, "usr/opt/openjdk-" + javaMajor + ".0"),
-                new File(appFilesDir, "usr/opt/openjdk-" + javaMajor)
-        };
-        for (File candidate : candidates) {
-            if (new File(candidate, "bin/java").isFile()) return candidate;
+        List<JavaCandidate> candidates = new ArrayList<JavaCandidate>();
+
+        collectJdkDirectory(new File(appFilesDir, "toolchains"), "jdk", "", candidates);
+        collectJdkDirectory(new File(appFilesDir, "usr/lib/jvm"), "java-", "-openjdk", candidates);
+        collectJdkDirectory(new File(appFilesDir, "usr/opt"), "openjdk-", ".0", candidates);
+        collectJdkDirectory(new File(appFilesDir, "usr/opt"), "openjdk-", "", candidates);
+
+        Collections.sort(candidates, new Comparator<JavaCandidate>() {
+            @Override public int compare(JavaCandidate a, JavaCandidate b) {
+                if (a.major != b.major) return a.major < b.major ? -1 : 1;
+                return a.home.getAbsolutePath().compareTo(b.home.getAbsolutePath());
+            }
+        });
+        for (JavaCandidate candidate : candidates) {
+            if (candidate.major >= javaMajor && new File(candidate.home, "bin/java").isFile()) return candidate.home;
         }
         return null;
+    }
+
+    private static void collectJdkDirectory(File parent, final String prefix, final String suffix, List<JavaCandidate> out) {
+        File[] children = parent.listFiles(new FileFilter() {
+            @Override public boolean accept(File file) {
+                return file.isDirectory() && file.getName().startsWith(prefix) && file.getName().endsWith(suffix);
+            }
+        });
+        if (children == null) return;
+        for (File child : children) {
+            String name = child.getName();
+            String middle = name.substring(prefix.length(), name.length() - suffix.length());
+            if (!middle.matches("[0-9]+")) continue;
+            try { out.add(new JavaCandidate(Integer.parseInt(middle), child)); }
+            catch (NumberFormatException ignored) {}
+        }
     }
 
     public static File findAndroidSdk(File appFilesDir) {
@@ -91,6 +118,8 @@ public final class RuntimeLayout {
     public static File findAapt2(File appFilesDir, File androidSdk) {
         File explicit = new File(appFilesDir, "toolchains/aapt2/aapt2");
         if (explicit.isFile()) return explicit;
+        File termuxStyle = new File(appFilesDir, "usr/bin/aapt2");
+        if (termuxStyle.isFile()) return termuxStyle;
         if (androidSdk == null) return explicit;
         File buildTools = new File(androidSdk, "build-tools");
         File[] versions = buildTools.listFiles(new FileFilter() { @Override public boolean accept(File file) { return file.isDirectory(); } });
@@ -120,6 +149,12 @@ public final class RuntimeLayout {
     private static int intPrefix(String value) {
         try { return Integer.parseInt(value.replaceFirst("[^0-9].*$", "")); }
         catch (Exception ignored) { return 0; }
+    }
+
+    private static final class JavaCandidate {
+        final int major;
+        final File home;
+        JavaCandidate(int major, File home) { this.major = major; this.home = home; }
     }
 
     public File getJavaHome() { return javaHome; }

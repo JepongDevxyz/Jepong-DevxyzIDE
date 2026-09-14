@@ -2,6 +2,8 @@ package com.jepongdevxyz.idebuild.core.toolchain;
 
 import com.jepongdevxyz.idebuild.core.build.ProjectRequirements;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Resolves a project requirement set against installed app-private toolchains. */
 public final class RuntimeCapabilities {
@@ -26,18 +28,15 @@ public final class RuntimeCapabilities {
         if (appFilesDir == null) throw new IllegalArgumentException("appFilesDir == null");
         if (requirements == null) throw new IllegalArgumentException("requirements == null");
 
+        List<String> missing = new ArrayList<String>();
         int javaMajor = requirements.getJavaMajor();
         File javaHome = RuntimeLayout.findJavaHome(appFilesDir, javaMajor);
-        if (javaHome == null) {
-            return missing(null, null, RuntimeLayout.findAndroidSdk(appFilesDir), null,
-                    "JDK " + javaMajor + " required");
-        }
+        if (javaHome == null) missing.add("JDK " + javaMajor + " required");
 
         String minimumGradle = requirements.getMinimumGradleVersion();
         File gradle = RuntimeLayout.findGradleExecutable(appFilesDir, minimumGradle);
         if (!requirements.isWrapperComplete() && gradle == null) {
-            String message = minimumGradle == null ? "Compatible Gradle runtime required" : "Gradle " + minimumGradle + "+ required";
-            return missing(javaHome, null, RuntimeLayout.findAndroidSdk(appFilesDir), null, message);
+            missing.add(minimumGradle == null ? "Compatible Gradle runtime required" : "Gradle " + minimumGradle + "+ required");
         }
 
         File sdk = RuntimeLayout.findAndroidSdk(appFilesDir);
@@ -46,23 +45,25 @@ public final class RuntimeCapabilities {
             int compileSdk = requirements.getCompileSdk();
             if (compileSdk > 0) {
                 File androidJar = new File(sdk, "platforms/android-" + compileSdk + "/android.jar");
-                if (!androidJar.isFile()) {
-                    return missing(javaHome, gradle, sdk, aapt2,
-                            "Android SDK platform " + compileSdk + " missing");
-                }
+                if (!androidJar.isFile()) missing.add("Android SDK platform " + compileSdk + " missing");
             } else if (!sdk.isDirectory()) {
-                return missing(javaHome, gradle, sdk, aapt2, "Android SDK required");
+                missing.add("Android SDK required");
             }
-            if (aapt2 == null || !aapt2.isFile()) {
-                return missing(javaHome, gradle, sdk, aapt2, "Android build-tools/aapt2 missing");
-            }
+            if (aapt2 == null || !aapt2.isFile()) missing.add("Android build-tools/aapt2 missing");
         }
 
-        return new RuntimeCapabilities(javaHome, gradle, sdk, aapt2, true, null);
+        String message = join(missing);
+        return new RuntimeCapabilities(javaHome, gradle, sdk, aapt2, missing.isEmpty(), message);
     }
 
-    private static RuntimeCapabilities missing(File javaHome, File gradle, File sdk, File aapt2, String message) {
-        return new RuntimeCapabilities(javaHome, gradle, sdk, aapt2, false, message);
+    private static String join(List<String> values) {
+        if (values == null || values.isEmpty()) return null;
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) out.append("; ");
+            out.append(values.get(i));
+        }
+        return out.toString();
     }
 
     public File getJavaHome() { return javaHome; }

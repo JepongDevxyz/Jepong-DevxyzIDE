@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.DevxyzIDE" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:navigationBarColor">@color/devxyz_bg</item>
+        <item name="android:statusBarColor">@color/devxyz_bg</item>
+        <item name="android:windowBackground">@color/devxyz_bg</item>
+        <item name="android:colorAccent">@color/devxyz_cyan</item>
+    </style>
+    <style name="Theme.DevxyzIDE.Splash" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">@color/devxyz_bg</item>
+        <item name="android:navigationBarColor">@color/devxyz_bg</item>
+        <item name="android:statusBarColor">@color/devxyz_bg</item>
+    </style>
+</resources>

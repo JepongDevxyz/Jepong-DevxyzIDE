@@ -1,7 +1,9 @@
 # DevxyzIDE
 
-DevxyzIDE v0.6 Hybrid Mobile IDE / AIDE Test Edition source.
+DevxyzIDE v0.6 Hybrid Mobile IDE / AIDE Test Edition.
 
-Package: `com.jepongdevxyz.idebuild`
+- App name: DevxyzIDE
+- Package: `com.jepongdevxyz.idebuild`
+- CI: full Android SDK 28 + Gradle 4.6 build, APK validation, emulator install and launch.
 
-This repository is used for full Android SDK + Gradle CI verification, including APK build and emulator install/launch checks.
+This CI branch keeps the DevxyzIDE Java/build logic and uses lightweight XML-only branding assets so the repository contains no large binary image blobs.

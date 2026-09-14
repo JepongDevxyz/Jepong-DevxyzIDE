@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/devxyz_bg"
+    android:padding="8dp">
+    <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content">
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+            <Button android:id="@+id/importButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/import_zip" />
+            <Button android:id="@+id/toolchainButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/toolchains" />
+            <Button android:id="@+id/runtimeButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/runtime_bootstrap" />
+            <Button android:id="@+id/saveButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/save" android:enabled="false" />
+            <Button android:id="@+id/buildButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/build" android:enabled="false" />
+            <Button android:id="@+id/installButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/install" android:enabled="false" />
+        </LinearLayout>
+    </HorizontalScrollView>
+    <TextView android:id="@+id/projectPath" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/no_project" android:textColor="@color/devxyz_muted" />
+    <ListView android:id="@+id/fileList" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+    <EditText android:id="@+id/editor" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="top|start" android:inputType="textMultiLine|textNoSuggestions" android:textColor="@color/devxyz_text" android:background="@color/devxyz_panel" android:typeface="monospace" />
+    <ScrollView android:id="@+id/consoleScroll" android:layout_width="match_parent" android:layout_height="120dp">
+        <TextView android:id="@+id/consoleText" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="DevxyzIDE ready." android:textColor="@color/devxyz_text" android:typeface="monospace" />
+    </ScrollView>
+</LinearLayout>

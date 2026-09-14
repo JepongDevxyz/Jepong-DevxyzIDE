@@ -18,7 +18,27 @@ git clone --recurse-submodules "$UPSTREAM" "$SRC"
 git -C "$SRC" checkout --detach "$COMMIT"
 git -C "$SRC" submodule update --init --recursive
 [ "$(git -C "$SRC" rev-parse HEAD)" = "$COMMIT" ] || { echo "upstream commit mismatch" >&2; exit 1; }
-git -C "$SRC" apply "$SCRIPT_DIR/patches/devxyz-prefix.patch"
+
+python3 - "$SRC/common.sh" "$SRC/packages.sh" <<'PY'
+import pathlib, sys
+common = pathlib.Path(sys.argv[1])
+packages = pathlib.Path(sys.argv[2])
+text = common.read_text(encoding="utf-8")
+old = 'COTG_PACKAGE_NAME="com.itsaky.androidide"'
+new = 'COTG_PACKAGE_NAME="com.jepongdevxyz.idebuild"'
+if text.count(old) != 1:
+    raise SystemExit("expected upstream applicationId assignment exactly once")
+common.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+text = packages.read_text(encoding="utf-8")
+needle = '    "openjdk-21"\n'
+if text.count(needle) != 1:
+    raise SystemExit("expected openjdk-21 base package exactly once")
+if '    "aapt"\n' not in text:
+    text = text.replace(needle, needle + '    "aapt"\n', 1)
+packages.write_text(text, encoding="utf-8")
+PY
+
 grep -q 'COTG_PACKAGE_NAME="com.jepongdevxyz.idebuild"' "$SRC/common.sh"
 grep -q '"aapt"' "$SRC/packages.sh"
 

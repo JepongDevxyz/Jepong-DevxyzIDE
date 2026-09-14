@@ -24,7 +24,7 @@ jobs:
       - name: Validate configuration and unit tests
         run: |
           cd tools/runtime-builder
-          python3 -m unittest -v test_validate_config.py test_toolchain_properties.py test_bootstrap_contract.py test_manifest.py
+          python3 -m unittest -v test_validate_config.py test_toolchain_properties.py test_bootstrap_contract.py test_manifest.py test_upstream_source_overrides.py
           python3 validate-config.py config/runtime-pack.properties
 
   gradle-pack:

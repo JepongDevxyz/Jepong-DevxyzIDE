@@ -1,6 +1,7 @@
 package com.jepongdevxyz.idebuild.core.toolchain;
 
 import com.jepongdevxyz.idebuild.core.build.JvmCompatibility;
+import com.jepongdevxyz.idebuild.core.build.GradleCompatibility;
 import com.jepongdevxyz.idebuild.core.build.ProjectRequirements;
 
 import java.io.File;
@@ -25,6 +26,13 @@ public final class ToolchainProvisioningPlan {
         List<String> required = new ArrayList<>();
         List<String> recommended = new ArrayList<>();
         ToolchainInventory inventory = ToolchainInventory.scan(appFilesDir);
+
+        if (!req.isWrapperComplete()) {
+            String minimumGradle = GradleCompatibility.minimumGradleForAgp(req.getAgpVersion());
+            if (RuntimeLayout.findGradleExecutable(appFilesDir, minimumGradle) == null) {
+                required.add(minimumGradle == null ? "gradle-compatible" : "gradle-" + minimumGradle + "+");
+            }
+        }
 
         int selected = JvmCompatibility.chooseInstalledJavaMajor(appFilesDir, req.getAgpVersion(), req.getGradleVersion());
         if (selected <= 0) {

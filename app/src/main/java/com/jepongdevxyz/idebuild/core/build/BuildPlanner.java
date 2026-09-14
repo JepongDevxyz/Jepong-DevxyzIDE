@@ -25,9 +25,15 @@ public final class BuildPlanner {
         LinkedHashMap<String, String> env = new LinkedHashMap<>();
         ToolchainInventory inventory = ToolchainInventory.scan(appFilesDir);
 
-        boolean wrapperOrInternalGradleAvailable = req.isWrapperComplete() || RuntimeLayout.findGradleExecutable(appFilesDir) != null;
-        if (!wrapperOrInternalGradleAvailable) blockers.add("No usable Gradle launcher was found. Add a complete Gradle Wrapper or install Gradle in the DevxyzIDE runtime.");
-        else if (!req.isWrapperComplete()) warnings.add("Gradle Wrapper is incomplete; using DevxyzIDE internal Gradle runtime.");
+        String minimumInternalGradle = GradleCompatibility.minimumGradleForAgp(req.getAgpVersion());
+        File compatibleInternalGradle = RuntimeLayout.findGradleExecutable(appFilesDir, minimumInternalGradle);
+        boolean wrapperOrInternalGradleAvailable = req.isWrapperComplete() || compatibleInternalGradle != null;
+        if (!wrapperOrInternalGradleAvailable) {
+            String suffix = minimumInternalGradle == null ? "" : " (Gradle " + minimumInternalGradle + "+ required by AGP " + req.getAgpVersion() + ")";
+            blockers.add("No compatible Gradle launcher was found" + suffix + ". Add a complete Gradle Wrapper or install a compatible Gradle runtime in DevxyzIDE.");
+        } else if (!req.isWrapperComplete()) {
+            warnings.add("Gradle Wrapper is incomplete; using compatible DevxyzIDE internal Gradle runtime" + (minimumInternalGradle == null ? "." : " (minimum " + minimumInternalGradle + ")."));
+        }
 
         int preferredJava = JvmCompatibility.recommendedJavaMajor(req.getAgpVersion(), req.getGradleVersion());
         int selectedJava = JvmCompatibility.chooseInstalledJavaMajor(appFilesDir, req.getAgpVersion(), req.getGradleVersion());

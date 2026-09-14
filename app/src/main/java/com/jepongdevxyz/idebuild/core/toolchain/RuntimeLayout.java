@@ -56,12 +56,13 @@ public final class RuntimeLayout {
 
     /** Finds an app-private Gradle launcher for projects without a wrapper. */
     public static File findGradleExecutable(File appFilesDir) {
+        return findGradleExecutable(appFilesDir, null);
+    }
+
+    /** Finds the newest versioned internal Gradle that satisfies the required minimum version. */
+    public static File findGradleExecutable(File appFilesDir, String minimumVersion) {
         if (appFilesDir == null) return null;
-        File[] direct = {
-                new File(appFilesDir, "usr/bin/gradle"),
-                new File(appFilesDir, "toolchains/gradle/bin/gradle")
-        };
-        for (File candidate : direct) if (candidate.isFile()) return candidate;
+
         File toolchains = new File(appFilesDir, "toolchains");
         File[] children = toolchains.listFiles(new FileFilter() {
             @Override public boolean accept(File file) { return file.isDirectory() && file.getName().startsWith("gradle-"); }
@@ -71,10 +72,19 @@ public final class RuntimeLayout {
                 @Override public int compare(File a, File b) { return -compareVersionText(a.getName(), b.getName()); }
             });
             for (File child : children) {
+                String version = child.getName().substring("gradle-".length());
+                if (minimumVersion != null && !com.jepongdevxyz.idebuild.core.build.GradleCompatibility.isAtLeast(version, minimumVersion)) continue;
                 File candidate = new File(child, "bin/gradle");
                 if (candidate.isFile()) return candidate;
             }
         }
+
+        if (minimumVersion != null) return null;
+        File[] direct = {
+                new File(appFilesDir, "usr/bin/gradle"),
+                new File(appFilesDir, "toolchains/gradle/bin/gradle")
+        };
+        for (File candidate : direct) if (candidate.isFile()) return candidate;
         return null;
     }
 

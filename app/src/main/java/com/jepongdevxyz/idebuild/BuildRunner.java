@@ -48,7 +48,8 @@ public final class BuildRunner {
             }
 
             File wrapper = new File(projectRoot, "gradlew");
-            File internalGradle = com.jepongdevxyz.idebuild.core.toolchain.RuntimeLayout.findGradleExecutable(appFilesDir);
+            String minimumInternalGradle = com.jepongdevxyz.idebuild.core.build.GradleCompatibility.minimumGradleForAgp(requirements.getAgpVersion());
+            File internalGradle = com.jepongdevxyz.idebuild.core.toolchain.RuntimeLayout.findGradleExecutable(appFilesDir, minimumInternalGradle);
             File gradleLauncher = requirements.isWrapperComplete() ? wrapper : internalGradle;
             if (gradleLauncher == null || !gradleLauncher.isFile()) throw new IOException("No usable Gradle launcher found");
             File javaBinary = new File(plan.getJavaHome(), "bin/java");

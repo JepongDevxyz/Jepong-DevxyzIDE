@@ -1,8 +1,8 @@
 import com.jepongdevxyz.idebuild.core.ProjectRootDetector;
 import com.jepongdevxyz.idebuild.core.SafeZip;
 import com.jepongdevxyz.idebuild.core.toolchain.RuntimeLayout;
+import com.jepongdevxyz.idebuild.core.build.GradleCompatibility;
 import java.io.*;
-import java.util.zip.*;
 
 public final class HybridHostTest {
     public static void main(String[] args) throws Exception {
@@ -11,7 +11,9 @@ public final class HybridHostTest {
         testRootProjectPreferred(); passed++;
         testLargeLongCounter(); passed++;
         testInternalGradleDetection(); passed++;
-        System.out.println("HYBRID HOST TESTS PASSED: " + passed + "/4");
+        testAgp87RequiresGradle89(); passed++;
+        testCompatibleInternalGradleSelection(); passed++;
+        System.out.println("HYBRID HOST TESTS PASSED: " + passed + "/6");
     }
 
     private static void testNestedProjectRoot() throws Exception {
@@ -43,6 +45,18 @@ public final class HybridHostTest {
         File gradle = new File(t, "usr/bin/gradle"); touch(gradle);
         File found = RuntimeLayout.findGradleExecutable(t);
         eq(gradle.getCanonicalFile(), found.getCanonicalFile(), "internal gradle");
+    }
+
+    private static void testAgp87RequiresGradle89() throws Exception {
+        eq("8.9", GradleCompatibility.minimumGradleForAgp("8.7.3"), "AGP 8.7 minimum Gradle");
+    }
+
+    private static void testCompatibleInternalGradleSelection() throws Exception {
+        File t = temp("gradle-version");
+        File oldGradle = new File(t, "toolchains/gradle-4.6/bin/gradle"); touch(oldGradle);
+        File goodGradle = new File(t, "toolchains/gradle-8.9/bin/gradle"); touch(goodGradle);
+        File found = RuntimeLayout.findGradleExecutable(t, "8.9");
+        eq(goodGradle.getCanonicalFile(), found.getCanonicalFile(), "compatible internal gradle");
     }
 
     private static File temp(String name) throws IOException {

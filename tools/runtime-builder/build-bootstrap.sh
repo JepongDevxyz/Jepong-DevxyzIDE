@@ -42,6 +42,12 @@ PY
 grep -q 'COTG_PACKAGE_NAME="com.jepongdevxyz.idebuild"' "$SRC/common.sh"
 grep -q '"aapt"' "$SRC/packages.sh"
 
+# The pinned Termux properties file exports JAVA_HOME from TERMUX_JAVA_HOME.
+# Preserve the JDK provisioned by GitHub Actions instead of letting upstream
+# fall back to a distro-specific path that is absent on hosted runners.
+: "${JAVA_HOME:?JAVA_HOME must be provided by the workflow}"
+export TERMUX_JAVA_HOME="$JAVA_HOME"
+
 # Use the pinned Termux toolchain bootstrap. It downloads the exact SDK/NDK
 # revisions required by the pinned package source and verifies its pinned
 # official Google SHA-256 values before the native package build starts.

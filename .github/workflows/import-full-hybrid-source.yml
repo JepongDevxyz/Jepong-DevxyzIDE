@@ -1,0 +1,64 @@
+name: Import Full HYBRID DevxyzIDE Source
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'bootstrap/DevxyzIDE-v0.6-FULL-HYBRID-SOURCE-IMPORT.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE='bootstrap/DevxyzIDE-v0.6-FULL-HYBRID-SOURCE-IMPORT.zip'
+          test -s "$ARCHIVE"
+          unzip -t "$ARCHIVE"
+
+      - name: Replace probe source with full HYBRID source
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE='bootstrap/DevxyzIDE-v0.6-FULL-HYBRID-SOURCE-IMPORT.zip'
+          rm -rf app docs host-tests tools runtime-builder gradle
+          rm -f build.gradle settings.gradle gradle.properties gradlew gradlew.bat bootstrap-wrapper.sh README.md TEST_REPORT.md TEST_REPORT_AIDE_FIX.md TEST_REPORT_HYBRID.md AIDE_TEST_EDITION.md THIRD_PARTY_NOTICES.md
+          unzip -q "$ARCHIVE" -d .
+          rm -f "$ARCHIVE"
+          rmdir bootstrap 2>/dev/null || true
+          rm -f .github/workflows/import-full-hybrid-source.yml
+
+      - name: Verify imported identity and full source markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
+          test -s app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java
+          test -s app/src/main/java/com/jepongdevxyz/idebuild/core/ProjectRootDetector.java
+          test -s app/src/main/java/com/jepongdevxyz/idebuild/core/build/BuildPlanner.java
+          test -s app/src/main/java/com/jepongdevxyz/idebuild/core/toolchain/RuntimePackDownloader.java
+          grep -F 'applicationId "com.jepongdevxyz.idebuild"' app/build.gradle
+          grep -F 'package="com.jepongdevxyz.idebuild"' app/src/main/AndroidManifest.xml
+          grep -F 'DevxyzIDE' app/src/main/res/values/strings.xml
+
+      - name: Commit full HYBRID source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'source: import full DevxyzIDE v0.6 HYBRID implementation'
+          git push origin HEAD:main

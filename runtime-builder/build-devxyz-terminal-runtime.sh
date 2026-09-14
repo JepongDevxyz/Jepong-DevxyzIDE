@@ -62,14 +62,18 @@ git -C "$SRC" fetch --tags --prune origin
 git -C "$SRC" checkout --detach "$UPSTREAM_COMMIT"
 git -C "$SRC" submodule update --init --recursive
 
-# Upstream build.sh exposes -p specifically to rebuild the fixed Termux prefix for another app id.
-"$SRC/build.sh" -a "$ARCH" -p "$DEVXYZ_APPLICATION_ID" -r "$PUBLISH_REPO" -s "$GPG_KEY"
+# Build the normal Code On the Go package set plus Android's native aapt package.
+# The pinned Termux aapt recipe emits an aapt2 subpackage (bin/aapt2), and using -p
+# rebuilds every native binary for DevxyzIDE's own app-private prefix rather than
+# mixing binaries compiled for com.termux.
+"$SRC/build.sh" -a "$ARCH" -p "$DEVXYZ_APPLICATION_ID" -r "$PUBLISH_REPO" -s "$GPG_KEY" "aapt"
 "$SRC/generate-apt-repo.sh"
 
 # Generate only the requested architecture instead of upstream's convenience wrapper that loops both ABIs.
 # shellcheck source=/dev/null
 source "$SRC/packages.sh"
-BOOTSTRAP_PACKAGES=("${COTG_PACKAGES__BASE[@]}" "${COTG_PACKAGES__DEBUG[@]}")
+# Include native aapt2 explicitly. openjdk-21 already comes from the pinned base package set.
+BOOTSTRAP_PACKAGES=("${COTG_PACKAGES__BASE[@]}" "${COTG_PACKAGES__DEBUG[@]}" "aapt2")
 PACKAGE_CSV=$(IFS=,; echo "${BOOTSTRAP_PACKAGES[*]}")
 ARCH_OUT="$SRC/output/$ARCH"
 pushd "$ARCH_OUT" >/dev/null

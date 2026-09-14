@@ -21,7 +21,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat bootstrap/chunks/*.b64 | tr -d '\n\r' | base64 -d > /tmp/full-source.zip
+          : > /tmp/full-source.zip
+          for part in $(find bootstrap/chunks -maxdepth 1 -type f -name '*.b64' | sort); do
+            base64 -d "$part" >> /tmp/full-source.zip
+          done
           test -s /tmp/full-source.zip
           unzip -t /tmp/full-source.zip
 

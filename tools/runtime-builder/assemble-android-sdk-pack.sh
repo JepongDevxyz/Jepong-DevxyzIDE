@@ -8,7 +8,7 @@ API="$(awk -F= '$1=="androidApi"{print $2}' "$CONFIG")"
 SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
 [ -x "$SDKMANAGER" ] || { echo "sdkmanager not found at $SDKMANAGER" >&2; exit 1; }
 
-yes | "$SDKMANAGER" "platforms;android-${API}" >/dev/null
+"$SDKMANAGER" "platforms;android-${API}" >/dev/null
 SRC="$ANDROID_SDK_ROOT/platforms/android-${API}"
 [ -f "$SRC/android.jar" ] || { echo "android.jar missing" >&2; exit 1; }
 

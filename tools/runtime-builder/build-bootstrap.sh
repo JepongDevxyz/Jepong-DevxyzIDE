@@ -42,6 +42,13 @@ PY
 grep -q 'COTG_PACKAGE_NAME="com.jepongdevxyz.idebuild"' "$SRC/common.sh"
 grep -q '"aapt"' "$SRC/packages.sh"
 
+# The pinned Termux source currently references a generated Codeberg tag
+# archive for foot 1.25.0 whose bytes no longer match the checksum stored in
+# that historical recipe. Apply one exact, fail-closed checksum correction.
+# This never disables checksum verification: unexpected upstream contents fail.
+python3 "$SCRIPT_DIR/upstream_source_overrides.py" \
+  "$SRC/termux-packages/x11-packages/foot/build.sh"
+
 # The pinned Termux properties file exports JAVA_HOME from TERMUX_JAVA_HOME.
 # Preserve the JDK provisioned by GitHub Actions instead of letting upstream
 # fall back to a distro-specific path that is absent on hosted runners.

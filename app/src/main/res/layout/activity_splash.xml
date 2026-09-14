@@ -4,12 +4,11 @@
     android:layout_height="match_parent"
     android:background="@color/devxyz_bg">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:text="DevxyzIDE"
-        android:textColor="@color/devxyz_cyan"
-        android:textSize="30sp"
-        android:textStyle="bold" />
+    <ImageView
+        android:id="@+id/splashImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/app_name"
+        android:scaleType="centerCrop"
+        android:src="@drawable/splash_screen" />
 </FrameLayout>

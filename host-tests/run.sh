@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+OUT="$ROOT/host-tests/out"
+rm -rf "$OUT"
+mkdir -p "$OUT"
+CORE_SOURCES=$(find "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/core" -name '*.java' -print)
+javac -d "$OUT" \
+  "$ROOT/host-tests/HostSelfTest.java" \
+  $CORE_SOURCES \
+  "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/ApkLocator.java" \
+  "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java"
+java -cp "$OUT" HostSelfTest
+python3 "$ROOT/host-tests/source_contract_test.py"
+python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
+python3 "$ROOT/host-tests/bootstrap_stamp_test.py"
+rm -rf "$OUT"

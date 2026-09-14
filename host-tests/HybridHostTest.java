@@ -1,7 +1,10 @@
 import com.jepongdevxyz.idebuild.core.ProjectRootDetector;
 import com.jepongdevxyz.idebuild.core.SafeZip;
 import com.jepongdevxyz.idebuild.core.toolchain.RuntimeLayout;
+import com.jepongdevxyz.idebuild.core.toolchain.RuntimeCapabilities;
 import com.jepongdevxyz.idebuild.core.build.GradleCompatibility;
+import com.jepongdevxyz.idebuild.core.build.ProjectAnalyzer;
+import com.jepongdevxyz.idebuild.core.build.ProjectRequirements;
 import java.io.*;
 
 public final class HybridHostTest {
@@ -13,7 +16,10 @@ public final class HybridHostTest {
         testInternalGradleDetection(); passed++;
         testAgp87RequiresGradle89(); passed++;
         testCompatibleInternalGradleSelection(); passed++;
-        System.out.println("HYBRID HOST TESTS PASSED: " + passed + "/6");
+        testModernProjectRequirements(); passed++;
+        testModernRuntimeMissingJdk(); passed++;
+        testModernRuntimeComplete(); passed++;
+        System.out.println("HYBRID HOST TESTS PASSED: " + passed + "/9");
     }
 
     private static void testNestedProjectRoot() throws Exception {
@@ -59,11 +65,50 @@ public final class HybridHostTest {
         eq(goodGradle.getCanonicalFile(), found.getCanonicalFile(), "compatible internal gradle");
     }
 
+    private static void testModernProjectRequirements() throws Exception {
+        ProjectRequirements req = modernRequirements();
+        eq("8.7.3", req.getAgpVersion(), "modern AGP");
+        eq("8.9", req.getMinimumGradleVersion(), "minimum Gradle");
+        eq(Integer.valueOf(17), Integer.valueOf(req.getJavaMajor()), "recommended Java");
+        eq(Integer.valueOf(35), Integer.valueOf(req.getCompileSdk()), "compile SDK");
+    }
+
+    private static void testModernRuntimeMissingJdk() throws Exception {
+        File runtime = temp("runtime-missing");
+        ProjectRequirements req = modernRequirements();
+        RuntimeCapabilities capabilities = RuntimeCapabilities.inspect(runtime, req);
+        if (capabilities.isReady()) throw new AssertionError("missing runtime unexpectedly ready");
+        eq("JDK 17 required", capabilities.getMissingRequirement(), "missing JDK message");
+    }
+
+    private static void testModernRuntimeComplete() throws Exception {
+        File runtime = temp("runtime-complete");
+        touch(new File(runtime, "toolchains/jdk17/bin/java"));
+        touch(new File(runtime, "toolchains/gradle-8.9/bin/gradle"));
+        touch(new File(runtime, "toolchains/android-sdk/platforms/android-35/android.jar"));
+        touch(new File(runtime, "toolchains/android-sdk/build-tools/35.0.0/aapt2"));
+        ProjectRequirements req = modernRequirements();
+        RuntimeCapabilities capabilities = RuntimeCapabilities.inspect(runtime, req);
+        if (!capabilities.isReady()) throw new AssertionError("complete runtime not ready: " + capabilities.getMissingRequirement());
+        eq(new File(runtime, "toolchains/jdk17").getCanonicalFile(), capabilities.getJavaHome().getCanonicalFile(), "JDK 17 selected");
+        eq(new File(runtime, "toolchains/gradle-8.9/bin/gradle").getCanonicalFile(), capabilities.getGradleExecutable().getCanonicalFile(), "Gradle 8.9 selected");
+    }
+
+    private static ProjectRequirements modernRequirements() throws Exception {
+        File p = temp("modern-project");
+        write(new File(p, "settings.gradle"), "pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }\n");
+        write(new File(p, "build.gradle"), "plugins { id 'com.android.application' version '8.7.3' apply false }\n");
+        File app = new File(p, "app"); app.mkdirs();
+        write(new File(app, "build.gradle"), "plugins { id 'com.android.application' }\nandroid { compileSdk 35\n defaultConfig { minSdk 23; targetSdk 35 } }\n");
+        return ProjectAnalyzer.analyze(p);
+    }
+
     private static File temp(String name) throws IOException {
         File f = File.createTempFile("devxyz-" + name, "");
         if (!f.delete() || !f.mkdirs()) throw new IOException("temp");
         return f;
     }
     private static void touch(File f) throws IOException { File p=f.getParentFile(); if(p!=null) p.mkdirs(); new FileOutputStream(f).close(); }
-    private static void eq(Object a,Object b,String m){ if(!a.equals(b)) throw new AssertionError(m+": "+a+" != "+b); }
+    private static void write(File f, String text) throws IOException { File p=f.getParentFile(); if(p!=null) p.mkdirs(); FileOutputStream out=new FileOutputStream(f); try { out.write(text.getBytes("UTF-8")); } finally { out.close(); } }
+    private static void eq(Object a,Object b,String m){ if(a==null?b!=null:!a.equals(b)) throw new AssertionError(m+": "+a+" != "+b); }
 }

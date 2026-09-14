@@ -8,6 +8,8 @@ VALID = {
     "nativeAbi": "aarch64",
     "gradleVersion": "8.9",
     "androidApi": "35",
+    "footTerminfoVersion": "1.28.0",
+    "footTerminfoSha256": "4296be402b5684d049534598e69db92b918f92beac9dab76b585207045f0b037",
 }
 
 
@@ -33,6 +35,14 @@ class ConfigValidationTest(unittest.TestCase):
 
     def test_old_android_api_rejected(self):
         cfg = dict(VALID); cfg["androidApi"] = "34"
+        with self.assertRaises(ValueError): validate(cfg)
+
+    def test_missing_foot_terminfo_pin_rejected(self):
+        cfg = dict(VALID); del cfg["footTerminfoSha256"]
+        with self.assertRaises(ValueError): validate(cfg)
+
+    def test_invalid_foot_terminfo_sha_rejected(self):
+        cfg = dict(VALID); cfg["footTerminfoSha256"] = "not-a-sha256"
         with self.assertRaises(ValueError): validate(cfg)
 
 

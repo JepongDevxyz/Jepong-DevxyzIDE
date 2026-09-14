@@ -24,6 +24,9 @@ jobs:
           : > /tmp/full-source.zip
           for part in $(find bootstrap/chunks -maxdepth 1 -type f -name '*.b64' | sort); do
             base64 -d "$part" >> /tmp/full-source.zip
+            if [ "$(basename "$part")" = "07-08-b.b64" ]; then
+              printf '%s' 'cy9ydW50aW1lL1VUCQADRrenalIRqGp1eAsAAQQAAAAABOkDAABQSwMEFAAAAAgA6EouXb0zezW/AwAAYgkAACAAHAB0b29s' | base64 -d >> /tmp/full-source.zip
+            fi
           done
           test -s /tmp/full-source.zip
           unzip -t /tmp/full-source.zip

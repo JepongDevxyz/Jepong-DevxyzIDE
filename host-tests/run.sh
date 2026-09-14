@@ -7,10 +7,12 @@ mkdir -p "$OUT"
 CORE_SOURCES=$(find "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/core" -name '*.java' -print)
 javac -d "$OUT" \
   "$ROOT/host-tests/HostSelfTest.java" \
+  "$ROOT/host-tests/HybridHostTest.java" \
   $CORE_SOURCES \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/ApkLocator.java" \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java"
 java -cp "$OUT" HostSelfTest
+java -cp "$OUT" HybridHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
 python3 "$ROOT/host-tests/bootstrap_stamp_test.py"

@@ -42,13 +42,6 @@ PY
 grep -q 'COTG_PACKAGE_NAME="com.jepongdevxyz.idebuild"' "$SRC/common.sh"
 grep -q '"aapt"' "$SRC/packages.sh"
 
-# The pinned Termux source currently references a generated Codeberg tag
-# archive for foot 1.25.0 whose bytes no longer match the checksum stored in
-# that historical recipe. Apply one exact, fail-closed checksum correction.
-# This never disables checksum verification: unexpected upstream contents fail.
-python3 "$SCRIPT_DIR/upstream_source_overrides.py" \
-  "$SRC/termux-packages/x11-packages/foot/build.sh"
-
 # The pinned Termux properties file exports JAVA_HOME from TERMUX_JAVA_HOME.
 # Preserve the JDK provisioned by GitHub Actions instead of letting upstream
 # fall back to a distro-specific path that is absent on hosted runners.
@@ -60,22 +53,24 @@ export TERMUX_JAVA_HOME="$JAVA_HOME"
 # official Google SHA-256 values before the native package build starts.
 "$SRC/termux-packages/scripts/setup-android-sdk.sh"
 
-# Build the pinned Android-native package set for aarch64. This includes
-# OpenJDK 21 and the aapt package, whose Termux subpackage provides aapt2.
+# Build only the Android-native capabilities DevxyzIDE needs. -e keeps the
+# upstream builder from compiling its entire terminal package set; dependency
+# closures for OpenJDK 21 and aapt are still built by termux build-package.
+# This avoids unrelated terminal/UI sources becoming runtime-pack blockers.
 (
   cd "$SRC"
-  ./build.sh -a aarch64
+  ./build.sh -a aarch64 -e openjdk-21 aapt
   ./generate-apt-repo.sh
 )
 
-# Generate only the requested architecture instead of the upstream helper's
-# aarch64+arm loop.
+# Generate a minimal bootstrap rooted at JDK21 and native aapt2. The local APT
+# repository contains the dependency closure built above, and bootstrap
+# generation resolves those dependencies into the archive.
 # shellcheck disable=SC1090
 . "$SRC/common.sh"
 OUT_ARCH="$SRC/output/aarch64"
 mkdir -p "$OUT_ARCH"
-PACKAGES="$(IFS=,; echo "${COTG_PACKAGES__BASE[*]} ${COTG_PACKAGES__DEBUG[*]}" | tr ' ' ',')"
-PACKAGES="${PACKAGES//,,/,}"
+PACKAGES="openjdk-21,aapt2"
 (
   cd "$OUT_ARCH"
   "$SRC/termux-packages/scripts/generate-bootstraps.sh" \

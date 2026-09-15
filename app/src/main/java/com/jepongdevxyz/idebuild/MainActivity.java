@@ -8,10 +8,13 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -31,6 +34,9 @@ import com.jepongdevxyz.idebuild.core.WorkspacePathResolver;
 import com.jepongdevxyz.idebuild.core.build.ProjectAnalyzer;
 import com.jepongdevxyz.idebuild.core.build.ProjectRequirements;
 import com.jepongdevxyz.idebuild.core.build.ProjectTemplateGenerator;
+import com.jepongdevxyz.idebuild.core.editor.EditorDocument;
+import com.jepongdevxyz.idebuild.core.editor.EditorSession;
+import com.jepongdevxyz.idebuild.core.editor.TextSearchService;
 import com.jepongdevxyz.idebuild.core.toolchain.ToolchainInventory;
 import com.jepongdevxyz.idebuild.core.toolchain.TerminalBootstrapInstaller;
 import com.jepongdevxyz.idebuild.core.toolchain.ToolchainPackInstaller;
@@ -66,15 +72,18 @@ public final class MainActivity extends Activity {
     private static final long MAX_BACKUP_BYTES = 16L * 1024L * 1024L * 1024L;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final EditorSession editorSession = new EditorSession();
     private Button createProjectButton, importButton, backupButton, toolchainButton, runtimeButton, newFileButton, newFolderButton;
-    private Button saveButton, buildButton, installButton;
+    private Button searchButton, saveAllButton, saveButton, buildButton, installButton;
     private TextView projectPath, consoleText;
     private ScrollView consoleScroll;
     private EditText editor;
     private ListView fileList;
+    private LinearLayout tabBar;
     private ArrayAdapter<String> fileAdapter;
     private final List<ProjectEntry> directoryEntries = new ArrayList<ProjectEntry>();
     private final List<String> explorerRows = new ArrayList<String>();
+    private boolean suppressEditorTextWatcher;
     private File projectRoot;
     private WorkspacePathResolver workspacePathResolver;
     private ProjectDirectoryService directoryService;
@@ -94,6 +103,8 @@ public final class MainActivity extends Activity {
         runtimeButton = (Button) findViewById(R.id.runtimeButton);
         newFileButton = (Button) findViewById(R.id.newFileButton);
         newFolderButton = (Button) findViewById(R.id.newFolderButton);
+        searchButton = (Button) findViewById(R.id.searchButton);
+        saveAllButton = (Button) findViewById(R.id.saveAllButton);
         saveButton = (Button) findViewById(R.id.saveButton);
         buildButton = (Button) findViewById(R.id.buildButton);
         installButton = (Button) findViewById(R.id.installButton);
@@ -102,6 +113,7 @@ public final class MainActivity extends Activity {
         consoleScroll = (ScrollView) findViewById(R.id.consoleScroll);
         editor = (EditText) findViewById(R.id.editor);
         fileList = (ListView) findViewById(R.id.fileList);
+        tabBar = (LinearLayout) findViewById(R.id.tabBar);
 
         fileAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, explorerRows) {
             @Override public View getView(int position, View convertView, android.view.ViewGroup parent) {
@@ -114,6 +126,20 @@ public final class MainActivity extends Activity {
         };
         fileList.setAdapter(fileAdapter);
 
+        editor.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+            @Override public void afterTextChanged(Editable s) {
+                if (suppressEditorTextWatcher) return;
+                EditorDocument active = editorSession.getActive();
+                if (active == null) return;
+                active.setText(s == null ? "" : s.toString());
+                currentPath = active.getPath();
+                renderEditorTabs();
+                updateEditorButtons();
+            }
+        });
+
         createProjectButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { promptCreateProject(); } });
         importButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseZip(); } });
         backupButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseBackupDestination(); } });
@@ -121,6 +147,8 @@ public final class MainActivity extends Activity {
         runtimeButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseRuntimeBootstrap(); } });
         newFileButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { promptCreateEntry(false); } });
         newFolderButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { promptCreateEntry(true); } });
+        searchButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSearchDialog(); } });
+        saveAllButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { saveAllOpenDocuments(); } });
         saveButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { saveCurrentFile(); } });
         buildButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { buildProject(); } });
         installButton.setOnClickListener(new View.OnClickListener() {
@@ -141,6 +169,7 @@ public final class MainActivity extends Activity {
                 return true;
             }
         });
+        updateEditorButtons();
     }
 
     private void promptCreateProject() {
@@ -165,7 +194,7 @@ public final class MainActivity extends Activity {
     private void promptCreateProjectDetails(final ProjectTemplateGenerator.Template template) {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
-        int padding = (int) (16f * getResources().getDisplayMetrics().density + 0.5f);
+        int padding = dp(16);
         form.setPadding(padding, padding / 2, padding, 0);
 
         final EditText nameInput = new EditText(this);
@@ -250,9 +279,9 @@ public final class MainActivity extends Activity {
 
     private void exportProjectBackup(final Uri uri) {
         final File root = projectRoot;
-        final ProjectPath pathToSave = currentPath;
         final WorkspacePathResolver resolver = workspacePathResolver;
-        final String contentToSave = editor.getText() == null ? "" : editor.getText().toString();
+        captureActiveEditorState();
+        final List<DocumentSaveSnapshot> saves = snapshotOpenDocuments();
         if (root == null) return;
 
         backupButton.setEnabled(false);
@@ -260,23 +289,22 @@ public final class MainActivity extends Activity {
         io.execute(new Runnable() { @Override public void run() {
             OutputStream output = null;
             try {
-                if (pathToSave != null) {
-                    if (resolver == null) throw new IOException("Workspace resolver is unavailable");
-                    writeUtf8(resolver.resolve(pathToSave), contentToSave);
-                    appendConsole("Saved before backup: " + pathToSave.getRelativePath());
-                }
+                writeSnapshots(saves, resolver);
                 output = new BufferedOutputStream(getContentResolver().openOutputStream(uri));
                 if (output == null) throw new IOException("Cannot open backup destination");
                 ProjectArchiveService.ArchiveResult result = ProjectArchiveService.writeSourceArchive(
                         root, output, MAX_BACKUP_FILE_ENTRIES, MAX_BACKUP_BYTES);
                 output.flush();
                 appendConsole("BACKUP COMPLETE: " + result.getFileEntries() + " files, " + humanBytes(result.getUncompressedBytes()));
+                runOnUiThread(new Runnable() { @Override public void run() { markSnapshotsSaved(saves); } });
             } catch (Exception e) {
                 appendConsole("BACKUP ERROR: " + e.getMessage());
             } finally {
                 closeQuietly(output);
                 runOnUiThread(new Runnable() { @Override public void run() {
                     backupButton.setEnabled(projectRoot != null);
+                    renderEditorTabs();
+                    updateEditorButtons();
                 }});
             }
         }});
@@ -369,6 +397,7 @@ public final class MainActivity extends Activity {
             return;
         }
 
+        editorSession.closeAll(true);
         projectRoot = canonicalRoot;
         workspacePathResolver = resolver;
         directoryService = new ProjectDirectoryService(resolver);
@@ -380,10 +409,9 @@ public final class MainActivity extends Activity {
         backupButton.setEnabled(true);
         newFileButton.setEnabled(true);
         newFolderButton.setEnabled(true);
-        saveButton.setEnabled(false);
         buildButton.setEnabled(true);
         installButton.setEnabled(false);
-        editor.setText("");
+        renderActiveEditor();
         refreshCurrentDirectory();
         appendConsole("Loaded project: " + canonicalRoot.getName());
         if (!new File(canonicalRoot, "gradlew").isFile()) appendConsole("No project Gradle Wrapper found; DevxyzIDE will try its internal Gradle runtime at build time.");
@@ -549,15 +577,21 @@ public final class MainActivity extends Activity {
         final ProjectFileService service = fileService;
         final ProjectPath parent = currentDirectory;
         final ProjectPath oldPath = entry.getPath();
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        captureActiveEditorState();
+        final List<DocumentSaveSnapshot> affected = snapshotDocumentsUnder(oldPath);
         if (service == null || parent == null) return;
         io.execute(new Runnable() { @Override public void run() {
             try {
+                writeSnapshots(affected, resolver);
                 final ProjectPath renamed = service.rename(oldPath, newName);
                 appendConsole("Renamed: " + oldPath.getRelativePath() + " -> " + renamed.getRelativePath());
                 runOnUiThread(new Runnable() { @Override public void run() {
                     if (fileService != service) return;
-                    if (isSameOrDescendant(oldPath, currentPath)) closeEditor("Open file was renamed; reopen it from Project files.");
+                    markSnapshotsSaved(affected);
+                    closeDocumentsUnder(oldPath);
                     if (sameProjectPath(currentDirectory, parent)) refreshCurrentDirectory();
+                    renderActiveEditor();
                 }});
             } catch (Exception e) { appendConsole("RENAME ERROR: " + e.getMessage()); }
         }});
@@ -579,9 +613,12 @@ public final class MainActivity extends Activity {
     }
 
     private void confirmDelete(final ProjectEntry entry) {
+        captureActiveEditorState();
+        boolean hasDirty = hasDirtyDocumentsUnder(entry.getPath());
         String detail = entry.isDirectory()
                 ? "Delete this folder and all files inside it? This cannot be undone."
                 : "Delete this file? This cannot be undone.";
+        if (hasDirty) detail += " Unsaved changes in open tabs inside this path will also be discarded.";
         new AlertDialog.Builder(this)
                 .setTitle("Delete " + entry.getName() + "?")
                 .setMessage(detail)
@@ -603,18 +640,332 @@ public final class MainActivity extends Activity {
                 appendConsole("Deleted: " + deletedPath.getRelativePath());
                 runOnUiThread(new Runnable() { @Override public void run() {
                     if (fileService != service) return;
-                    if (isSameOrDescendant(deletedPath, currentPath)) closeEditor("Open file was deleted.");
+                    closeDocumentsUnder(deletedPath);
                     if (sameProjectPath(currentDirectory, parent)) refreshCurrentDirectory();
+                    renderActiveEditor();
                 }});
             } catch (Exception e) { appendConsole("DELETE ERROR: " + e.getMessage()); }
         }});
     }
 
-    private void closeEditor(String reason) {
-        currentPath = null;
-        editor.setText("");
+    private void openProjectFile(final ProjectPath path) {
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        if (resolver == null || path == null) return;
+
+        EditorDocument alreadyOpen = editorSession.find(path);
+        if (alreadyOpen != null) {
+            captureActiveEditorState();
+            editorSession.switchTo(path);
+            renderActiveEditor();
+            return;
+        }
+
+        if (!TextFileClassifier.isTextFile(path.getRelativePath())) {
+            appendConsole("Binary/non-text file not opened: " + path.getRelativePath());
+            return;
+        }
+
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                final File file = resolver.resolve(path);
+                if (file.length() > MAX_TEXT_BYTES) {
+                    appendConsole("File is larger than 2 MiB; editor refused it: " + path.getRelativePath());
+                    return;
+                }
+                final String text = readUtf8(file, MAX_TEXT_BYTES);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    if (workspacePathResolver != resolver) return;
+                    captureActiveEditorState();
+                    editorSession.open(path, text);
+                    renderActiveEditor();
+                    appendConsole("Opened: " + path.getRelativePath());
+                }});
+            } catch (Exception e) { appendConsole("OPEN ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void captureActiveEditorState() {
+        EditorDocument active = editorSession.getActive();
+        if (active == null) return;
+        active.setText(editor.getText() == null ? "" : editor.getText().toString());
+        int start = editor.getSelectionStart();
+        int end = editor.getSelectionEnd();
+        if (start < 0) start = 0;
+        if (end < 0) end = start;
+        active.setSelectionStart(start);
+        active.setSelectionEnd(end);
+        active.setCursorOffset(end);
+        active.setScrollY(editor.getScrollY());
+        currentPath = active.getPath();
+    }
+
+    private void renderActiveEditor() {
+        final EditorDocument active = editorSession.getActive();
+        suppressEditorTextWatcher = true;
+        try {
+            if (active == null) {
+                currentPath = null;
+                editor.setText("");
+            } else {
+                currentPath = active.getPath();
+                editor.setText(active.getText());
+                int start = Math.min(active.getSelectionStart(), editor.length());
+                int end = Math.min(active.getSelectionEnd(), editor.length());
+                if (start > end) start = end;
+                editor.setSelection(start, end);
+                editor.post(new Runnable() { @Override public void run() { editor.scrollTo(0, active.getScrollY()); } });
+            }
+        } finally {
+            suppressEditorTextWatcher = false;
+        }
+        renderEditorTabs();
+        updateEditorButtons();
+    }
+
+    private void renderEditorTabs() {
+        tabBar.removeAllViews();
+        EditorDocument active = editorSession.getActive();
+        for (final EditorDocument document : editorSession.getDocuments()) {
+            Button tab = new Button(this);
+            tab.setAllCaps(false);
+            String label = (document.isDirty() ? "* " : "") + document.getDisplayName();
+            if (document == active) label = "[" + label + "]";
+            tab.setText(label);
+            tab.setTextSize(11f);
+            tab.setMinHeight(0);
+            tab.setMinimumHeight(0);
+            tab.setPadding(dp(10), dp(4), dp(10), dp(4));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            params.setMargins(dp(2), dp(2), dp(2), dp(2));
+            tabBar.addView(tab, params);
+            tab.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    captureActiveEditorState();
+                    editorSession.switchTo(document.getPath());
+                    renderActiveEditor();
+                }
+            });
+            tab.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override public boolean onLongClick(View v) {
+                    captureActiveEditorState();
+                    requestCloseTab(document);
+                    return true;
+                }
+            });
+        }
+    }
+
+    private void requestCloseTab(final EditorDocument document) {
+        if (document == null) return;
+        if (!document.isDirty()) {
+            editorSession.close(document.getPath(), true);
+            renderActiveEditor();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Unsaved changes")
+                .setMessage("Save changes to " + document.getDisplayName() + " before closing?")
+                .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) { saveDocumentAndClose(document); }
+                })
+                .setNeutralButton("Discard", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        editorSession.close(document.getPath(), true);
+                        renderActiveEditor();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void saveDocumentAndClose(final EditorDocument document) {
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        final DocumentSaveSnapshot snapshot = new DocumentSaveSnapshot(document, document.getPath(), document.getText());
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                if (resolver == null) throw new IOException("Workspace resolver is unavailable");
+                writeUtf8(resolver.resolve(snapshot.path), snapshot.text);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    if (document.getText().equals(snapshot.text)) document.markSaved();
+                    editorSession.close(document.getPath(), true);
+                    renderActiveEditor();
+                }});
+                appendConsole("Saved and closed: " + snapshot.path.getRelativePath());
+            } catch (Exception e) { appendConsole("SAVE ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void showSearchDialog() {
+        final EditorDocument active = editorSession.getActive();
+        if (active == null) return;
+
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(16);
+        form.setPadding(padding, padding / 2, padding, 0);
+
+        final EditText query = new EditText(this);
+        query.setSingleLine(true);
+        query.setHint("Find text");
+        form.addView(query, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        final EditText replacement = new EditText(this);
+        replacement.setSingleLine(true);
+        replacement.setHint("Replace with (optional)");
+        form.addView(replacement, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        final CheckBox matchCase = new CheckBox(this);
+        matchCase.setText("Match case");
+        form.addView(matchCase, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        new AlertDialog.Builder(this)
+                .setTitle("Search / Replace")
+                .setView(form)
+                .setPositiveButton("Find Next", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        String q = query.getText() == null ? "" : query.getText().toString();
+                        if (q.length() == 0) { appendConsole("SEARCH: Enter text to find."); return; }
+                        findNextInEditor(q, matchCase.isChecked());
+                    }
+                })
+                .setNeutralButton("Replace All", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        String q = query.getText() == null ? "" : query.getText().toString();
+                        if (q.length() == 0) { appendConsole("SEARCH: Enter text to replace."); return; }
+                        String r = replacement.getText() == null ? "" : replacement.getText().toString();
+                        replaceAllInEditor(q, r, matchCase.isChecked());
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void findNextInEditor(String query, boolean matchCase) {
+        String text = editor.getText() == null ? "" : editor.getText().toString();
+        int from = editor.getSelectionEnd();
+        if (from < 0) from = 0;
+        TextSearchService.Match match = TextSearchService.findNext(text, query, from, matchCase, true);
+        if (match == null) {
+            appendConsole("SEARCH: No match for \"" + query + "\".");
+            return;
+        }
+        editor.requestFocus();
+        editor.setSelection(match.getOffset(), match.getOffset() + match.getLength());
+        captureActiveEditorState();
+        appendConsole("SEARCH: line " + match.getLineNumber() + ", column " + match.getColumnNumber());
+    }
+
+    private void replaceAllInEditor(String query, String replacement, boolean matchCase) {
+        String text = editor.getText() == null ? "" : editor.getText().toString();
+        TextSearchService.ReplaceResult result = TextSearchService.replaceAll(text, query, replacement, matchCase, 1000000);
+        if (result.getReplacementCount() == 0) {
+            appendConsole("REPLACE: No match for \"" + query + "\".");
+            return;
+        }
+        editor.setText(result.getText());
+        editor.setSelection(Math.min(editor.length(), 0));
+        captureActiveEditorState();
+        renderEditorTabs();
+        appendConsole("REPLACE: " + result.getReplacementCount() + " occurrence(s) replaced.");
+    }
+
+    private void saveCurrentFile() {
+        captureActiveEditorState();
+        final EditorDocument document = editorSession.getActive();
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        if (document == null || resolver == null) return;
+        final DocumentSaveSnapshot snapshot = new DocumentSaveSnapshot(document, document.getPath(), document.getText());
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                writeUtf8(resolver.resolve(snapshot.path), snapshot.text);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    if (document.getText().equals(snapshot.text)) document.markSaved();
+                    renderEditorTabs();
+                    updateEditorButtons();
+                }});
+                appendConsole("Saved: " + snapshot.path.getRelativePath());
+            } catch (Exception e) { appendConsole("SAVE ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void saveAllOpenDocuments() {
+        captureActiveEditorState();
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        final List<DocumentSaveSnapshot> snapshots = snapshotOpenDocuments();
+        if (resolver == null || snapshots.isEmpty()) return;
+        saveAllButton.setEnabled(false);
         saveButton.setEnabled(false);
-        appendConsole(reason);
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                writeSnapshots(snapshots, resolver);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    markSnapshotsSaved(snapshots);
+                    renderEditorTabs();
+                    updateEditorButtons();
+                }});
+                appendConsole("SAVE ALL: " + snapshots.size() + " open file(s) saved.");
+            } catch (Exception e) {
+                appendConsole("SAVE ALL ERROR: " + e.getMessage());
+            } finally {
+                runOnUiThread(new Runnable() { @Override public void run() { updateEditorButtons(); } });
+            }
+        }});
+    }
+
+    private List<DocumentSaveSnapshot> snapshotOpenDocuments() {
+        List<DocumentSaveSnapshot> snapshots = new ArrayList<DocumentSaveSnapshot>();
+        for (EditorDocument document : editorSession.getDocuments()) {
+            snapshots.add(new DocumentSaveSnapshot(document, document.getPath(), document.getText()));
+        }
+        return snapshots;
+    }
+
+    private List<DocumentSaveSnapshot> snapshotDocumentsUnder(ProjectPath parent) {
+        List<DocumentSaveSnapshot> snapshots = new ArrayList<DocumentSaveSnapshot>();
+        for (EditorDocument document : editorSession.getDocuments()) {
+            if (isSameOrDescendant(parent, document.getPath())) {
+                snapshots.add(new DocumentSaveSnapshot(document, document.getPath(), document.getText()));
+            }
+        }
+        return snapshots;
+    }
+
+    private void writeSnapshots(List<DocumentSaveSnapshot> snapshots, WorkspacePathResolver resolver) throws IOException {
+        if (resolver == null && !snapshots.isEmpty()) throw new IOException("Workspace resolver is unavailable");
+        for (DocumentSaveSnapshot snapshot : snapshots) {
+            writeUtf8(resolver.resolve(snapshot.path), snapshot.text);
+        }
+    }
+
+    private void markSnapshotsSaved(List<DocumentSaveSnapshot> snapshots) {
+        for (DocumentSaveSnapshot snapshot : snapshots) {
+            if (snapshot.document.getText().equals(snapshot.text)) snapshot.document.markSaved();
+        }
+    }
+
+    private void closeDocumentsUnder(ProjectPath parent) {
+        List<ProjectPath> paths = new ArrayList<ProjectPath>();
+        for (EditorDocument document : editorSession.getDocuments()) {
+            if (isSameOrDescendant(parent, document.getPath())) paths.add(document.getPath());
+        }
+        for (ProjectPath path : paths) editorSession.close(path, true);
+    }
+
+    private boolean hasDirtyDocumentsUnder(ProjectPath parent) {
+        for (EditorDocument document : editorSession.getDocuments()) {
+            if (isSameOrDescendant(parent, document.getPath()) && document.isDirty()) return true;
+        }
+        return false;
+    }
+
+    private void updateEditorButtons() {
+        EditorDocument active = editorSession.getActive();
+        boolean hasActive = active != null;
+        searchButton.setEnabled(hasActive);
+        saveButton.setEnabled(hasActive);
+        saveAllButton.setEnabled(editorSession.size() > 0);
     }
 
     private static boolean isSameOrDescendant(ProjectPath parent, ProjectPath candidate) {
@@ -641,70 +992,27 @@ public final class MainActivity extends Activity {
                 && left.getRelativePath().equals(right.getRelativePath());
     }
 
-    private void openProjectFile(final ProjectPath path) {
-        final WorkspacePathResolver resolver = workspacePathResolver;
-        if (resolver == null || path == null) return;
-
-        if (!TextFileClassifier.isTextFile(path.getRelativePath())) {
-            appendConsole("Binary/non-text file not opened: " + path.getRelativePath());
-            return;
-        }
-
-        io.execute(new Runnable() { @Override public void run() {
-            try {
-                final File file = resolver.resolve(path);
-                if (file.length() > MAX_TEXT_BYTES) {
-                    appendConsole("File is larger than 2 MiB; editor refused it: " + path.getRelativePath());
-                    return;
-                }
-                final String text = readUtf8(file, MAX_TEXT_BYTES);
-                runOnUiThread(new Runnable() { @Override public void run() {
-                    if (workspacePathResolver != resolver) return;
-                    currentPath = path;
-                    editor.setText(text);
-                    editor.setSelection(0);
-                    saveButton.setEnabled(true);
-                    appendConsole("Opened: " + path.getRelativePath());
-                }});
-            } catch (Exception e) { appendConsole("OPEN ERROR: " + e.getMessage()); }
-        }});
-    }
-
-    private void saveCurrentFile() {
-        final ProjectPath path = currentPath;
-        final WorkspacePathResolver resolver = workspacePathResolver;
-        if (path == null || resolver == null) return;
-        final String content = editor.getText() == null ? "" : editor.getText().toString();
-        io.execute(new Runnable() { @Override public void run() {
-            try {
-                File file = resolver.resolve(path);
-                writeUtf8(file, content);
-                appendConsole("Saved: " + path.getRelativePath());
-            } catch (Exception e) { appendConsole("SAVE ERROR: " + e.getMessage()); }
-        }});
-    }
-
     private void buildProject() {
         if (projectRoot == null) return;
+        captureActiveEditorState();
         final File root = projectRoot;
-        final ProjectPath pathToSave = currentPath;
         final WorkspacePathResolver resolver = workspacePathResolver;
-        final String contentToSave = editor.getText() == null ? "" : editor.getText().toString();
+        final List<DocumentSaveSnapshot> saves = snapshotOpenDocuments();
         buildButton.setEnabled(false); installButton.setEnabled(false); lastBuiltApk = null;
         appendConsole("\n> DevxyzIDE wrapper-aware preflight + assembleDebug");
         io.execute(new Runnable() { @Override public void run() {
-            if (pathToSave != null) {
-                try {
-                    if (resolver == null) throw new IOException("Workspace resolver is unavailable");
-                    File fileToSave = resolver.resolve(pathToSave);
-                    writeUtf8(fileToSave, contentToSave);
-                    appendConsole("Saved before build: " + pathToSave.getRelativePath());
-                } catch (IOException e) {
-                    appendConsole("SAVE ERROR: " + e.getMessage());
-                    runOnUiThread(new Runnable() { @Override public void run() { buildButton.setEnabled(true); } });
-                    return;
-                }
+            try {
+                writeSnapshots(saves, resolver);
+            } catch (IOException e) {
+                appendConsole("SAVE ERROR: " + e.getMessage());
+                runOnUiThread(new Runnable() { @Override public void run() { buildButton.setEnabled(true); } });
+                return;
             }
+            runOnUiThread(new Runnable() { @Override public void run() {
+                markSnapshotsSaved(saves);
+                renderEditorTabs();
+                updateEditorButtons();
+            }});
             BuildRunner.runDebugBuild(root, getFilesDir(), new BuildRunner.Listener() {
                 @Override public void onLine(String line) { appendConsole(line); }
                 @Override public void onFinished(final int exitCode, final File apk) {
@@ -790,8 +1098,24 @@ public final class MainActivity extends Activity {
         return String.format(java.util.Locale.US, "%.1f %s", value, units[unit]);
     }
 
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
     private static void closeQuietly(java.io.Closeable closeable) {
         if (closeable != null) try { closeable.close(); } catch (IOException ignored) { }
+    }
+
+    private static final class DocumentSaveSnapshot {
+        private final EditorDocument document;
+        private final ProjectPath path;
+        private final String text;
+
+        private DocumentSaveSnapshot(EditorDocument document, ProjectPath path, String text) {
+            this.document = document;
+            this.path = path;
+            this.text = text;
+        }
     }
 
     @Override protected void onDestroy() { io.shutdownNow(); super.onDestroy(); }

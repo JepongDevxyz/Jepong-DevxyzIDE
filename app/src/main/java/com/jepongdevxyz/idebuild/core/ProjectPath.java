@@ -74,6 +74,14 @@ public final class ProjectPath {
         return of(backendId, childPath);
     }
 
+    public ProjectPath parent() {
+        if (relativePath.length() == 0) return null;
+        int separator = relativePath.lastIndexOf('/');
+        return separator < 0
+                ? of(backendId, "")
+                : of(backendId, relativePath.substring(0, separator));
+    }
+
     private static boolean isWindowsAbsolute(String path) {
         return path.length() >= 3
                 && Character.isLetter(path.charAt(0))

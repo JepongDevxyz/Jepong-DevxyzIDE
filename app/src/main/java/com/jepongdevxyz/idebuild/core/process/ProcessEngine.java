@@ -151,15 +151,21 @@ public final class ProcessEngine {
     }
 
     private static void safeStdout(Listener listener, String line) {
-        try { listener.onStdout(line); } catch (RuntimeException ignored) { }
+        synchronized (listener) {
+            try { listener.onStdout(line); } catch (RuntimeException ignored) { }
+        }
     }
 
     private static void safeStderr(Listener listener, String line) {
-        try { listener.onStderr(line); } catch (RuntimeException ignored) { }
+        synchronized (listener) {
+            try { listener.onStderr(line); } catch (RuntimeException ignored) { }
+        }
     }
 
     private static void safeFinished(Listener listener, ProcessResult result) {
-        try { listener.onFinished(result); } catch (RuntimeException ignored) { }
+        synchronized (listener) {
+            try { listener.onFinished(result); } catch (RuntimeException ignored) { }
+        }
     }
 
     private static void joinQuietly(Thread thread) throws InterruptedException {

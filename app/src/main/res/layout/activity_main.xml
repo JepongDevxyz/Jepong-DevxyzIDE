@@ -86,12 +86,14 @@
     </HorizontalScrollView>
 
     <LinearLayout
+        android:id="@+id/workspaceBody"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
         <LinearLayout
+            android:id="@+id/projectPane"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="0.34"
@@ -103,18 +105,25 @@
 
         <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/devxyz_line" />
 
-        <EditText
-            android:id="@+id/editor"
+        <LinearLayout
+            android:id="@+id/editorPane"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="0.66"
             android:background="@color/devxyz_bg"
-            android:gravity="top|start"
-            android:inputType="textMultiLine|textNoSuggestions"
-            android:textColor="@color/devxyz_text"
-            android:textSize="13sp"
-            android:typeface="monospace"
-            android:padding="10dp" />
+            android:orientation="vertical">
+            <EditText
+                android:id="@+id/editor"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/devxyz_bg"
+                android:gravity="top|start"
+                android:inputType="textMultiLine|textNoSuggestions"
+                android:textColor="@color/devxyz_text"
+                android:textSize="13sp"
+                android:typeface="monospace"
+                android:padding="10dp" />
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout

@@ -42,9 +42,14 @@ public final class ProjectSearchServiceHostTest {
                     });
 
             assertEquals(3, matches.size());
-            assertEquals("app/src/Main.java", matches.get(0).getPath().getRelativePath());
-            assertEquals(1, matches.get(0).getLineNumber());
-            assertEquals(1, matches.get(0).getColumnNumber());
+            ProjectSearchService.SearchMatch javaFirst = findMatch(matches, "app/src/Main.java", 1);
+            ProjectSearchService.SearchMatch javaSecond = findMatch(matches, "app/src/Main.java", 2);
+            ProjectSearchService.SearchMatch xml = findMatch(matches, "app/src/layout.xml", 1);
+            assertNotNull(javaFirst);
+            assertNotNull(javaSecond);
+            assertNotNull(xml);
+            assertEquals(1, javaFirst.getLineNumber());
+            assertEquals(1, javaFirst.getColumnNumber());
             assertEquals(3, summary.getMatches());
             assertFalse(summary.isCancelled());
             passed++;
@@ -113,6 +118,16 @@ public final class ProjectSearchServiceHostTest {
         } finally { deleteTree(root); }
     }
 
+    private static ProjectSearchService.SearchMatch findMatch(
+            List<ProjectSearchService.SearchMatch> matches,
+            String relativePath,
+            int line) {
+        for (ProjectSearchService.SearchMatch match : matches) {
+            if (relativePath.equals(match.getPath().getRelativePath()) && match.getLineNumber() == line) return match;
+        }
+        return null;
+    }
+
     private static final class MutableCancellation implements ProjectSearchService.Cancellation {
         boolean cancelled;
         @Override public boolean isCancelled() { return cancelled; }
@@ -139,6 +154,7 @@ public final class ProjectSearchServiceHostTest {
     private static void assertEquals(String expected, String actual) {
         if (!expected.equals(actual)) throw new AssertionError("Expected " + expected + " but was " + actual);
     }
+    private static void assertNotNull(Object value) { if (value == null) throw new AssertionError("Expected non-null"); }
     private static void assertTrue(boolean value) { if (!value) throw new AssertionError("Expected true"); }
     private static void assertFalse(boolean value) { if (value) throw new AssertionError("Expected false"); }
 }

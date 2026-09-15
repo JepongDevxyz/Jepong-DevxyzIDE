@@ -16,9 +16,11 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.jepongdevxyz.idebuild.core.ProjectFiles;
+import com.jepongdevxyz.idebuild.core.ProjectPath;
 import com.jepongdevxyz.idebuild.core.ProjectRootDetector;
 import com.jepongdevxyz.idebuild.core.SafeZip;
 import com.jepongdevxyz.idebuild.core.TextFileClassifier;
+import com.jepongdevxyz.idebuild.core.WorkspacePathResolver;
 import com.jepongdevxyz.idebuild.core.build.ProjectAnalyzer;
 import com.jepongdevxyz.idebuild.core.build.ProjectRequirements;
 import com.jepongdevxyz.idebuild.core.toolchain.ToolchainInventory;
@@ -44,6 +46,7 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_IMPORT_ZIP = 5001;
     private static final int REQUEST_TOOLCHAIN_PACK = 5002;
     private static final int REQUEST_RUNTIME_BOOTSTRAP = 5003;
+    private static final String PROJECT_BACKEND_ID = "local-project";
     private static final long MAX_IMPORT_BYTES = 8L * 1024L * 1024L * 1024L;
     private static final int MAX_IMPORT_ENTRIES = 100000;
     private static final long MAX_TEXT_BYTES = 2L * 1024L * 1024L;
@@ -58,7 +61,8 @@ public final class MainActivity extends Activity {
     private ArrayAdapter<String> fileAdapter;
     private final List<String> relativeFiles = new ArrayList<String>();
     private File projectRoot;
-    private File currentFile;
+    private WorkspacePathResolver workspacePathResolver;
+    private ProjectPath currentPath;
     private File lastBuiltApk;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -204,16 +208,29 @@ public final class MainActivity extends Activity {
     }
 
     private void loadProject(File root) {
-        projectRoot = root; currentFile = null; lastBuiltApk = null;
-        projectPath.setText(root.getAbsolutePath());
+        final File canonicalRoot;
+        final WorkspacePathResolver resolver;
+        try {
+            canonicalRoot = root.getCanonicalFile();
+            resolver = new WorkspacePathResolver(canonicalRoot, PROJECT_BACKEND_ID);
+        } catch (IOException e) {
+            appendConsole("PROJECT ERROR: " + e.getMessage());
+            return;
+        }
+
+        projectRoot = canonicalRoot;
+        workspacePathResolver = resolver;
+        currentPath = null;
+        lastBuiltApk = null;
+        projectPath.setText(canonicalRoot.getAbsolutePath());
         saveButton.setEnabled(false);
         buildButton.setEnabled(true);
         installButton.setEnabled(false);
         editor.setText("");
         refreshProjectFiles();
-        appendConsole("Loaded project: " + root.getName());
-        if (!new File(root, "gradlew").isFile()) appendConsole("No project Gradle Wrapper found; DevxyzIDE will try its internal Gradle runtime at build time.");
-        analyzeProject(root);
+        appendConsole("Loaded project: " + canonicalRoot.getName());
+        if (!new File(canonicalRoot, "gradlew").isFile()) appendConsole("No project Gradle Wrapper found; DevxyzIDE will try its internal Gradle runtime at build time.");
+        analyzeProject(canonicalRoot);
     }
 
     private void analyzeProject(final File root) {
@@ -243,41 +260,72 @@ public final class MainActivity extends Activity {
     }
 
     private void openRelativeFile(final String relative) {
-        if (projectRoot == null) return;
-        final File file = new File(projectRoot, relative);
-        if (!TextFileClassifier.isTextFile(relative)) { appendConsole("Binary/non-text file not opened: " + relative); return; }
-        if (file.length() > MAX_TEXT_BYTES) { appendConsole("File is larger than 2 MiB; editor refused it: " + relative); return; }
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        if (resolver == null) return;
+
+        final ProjectPath path;
+        try {
+            path = ProjectPath.of(PROJECT_BACKEND_ID, relative);
+        } catch (IllegalArgumentException e) {
+            appendConsole("OPEN ERROR: " + e.getMessage());
+            return;
+        }
+
+        if (!TextFileClassifier.isTextFile(path.getRelativePath())) {
+            appendConsole("Binary/non-text file not opened: " + path.getRelativePath());
+            return;
+        }
+
         io.execute(new Runnable() { @Override public void run() {
             try {
+                final File file = resolver.resolve(path);
+                if (file.length() > MAX_TEXT_BYTES) {
+                    appendConsole("File is larger than 2 MiB; editor refused it: " + path.getRelativePath());
+                    return;
+                }
                 final String text = readUtf8(file, MAX_TEXT_BYTES);
                 runOnUiThread(new Runnable() { @Override public void run() {
-                    currentFile = file; editor.setText(text); editor.setSelection(0); saveButton.setEnabled(true); appendConsole("Opened: " + relative);
+                    if (workspacePathResolver != resolver) return;
+                    currentPath = path;
+                    editor.setText(text);
+                    editor.setSelection(0);
+                    saveButton.setEnabled(true);
+                    appendConsole("Opened: " + path.getRelativePath());
                 }});
             } catch (Exception e) { appendConsole("OPEN ERROR: " + e.getMessage()); }
         }});
     }
 
     private void saveCurrentFile() {
-        final File file = currentFile;
-        if (file == null) return;
+        final ProjectPath path = currentPath;
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        if (path == null || resolver == null) return;
         final String content = editor.getText() == null ? "" : editor.getText().toString();
         io.execute(new Runnable() { @Override public void run() {
-            try { writeUtf8(file, content); appendConsole("Saved: " + relativePath(file)); }
-            catch (Exception e) { appendConsole("SAVE ERROR: " + e.getMessage()); }
+            try {
+                File file = resolver.resolve(path);
+                writeUtf8(file, content);
+                appendConsole("Saved: " + path.getRelativePath());
+            } catch (Exception e) { appendConsole("SAVE ERROR: " + e.getMessage()); }
         }});
     }
 
     private void buildProject() {
         if (projectRoot == null) return;
         final File root = projectRoot;
-        final File fileToSave = currentFile;
+        final ProjectPath pathToSave = currentPath;
+        final WorkspacePathResolver resolver = workspacePathResolver;
         final String contentToSave = editor.getText() == null ? "" : editor.getText().toString();
         buildButton.setEnabled(false); installButton.setEnabled(false); lastBuiltApk = null;
         appendConsole("\n> DevxyzIDE wrapper-aware preflight + assembleDebug");
         io.execute(new Runnable() { @Override public void run() {
-            if (fileToSave != null) {
-                try { writeUtf8(fileToSave, contentToSave); appendConsole("Saved before build: " + relativePath(fileToSave)); }
-                catch (IOException e) {
+            if (pathToSave != null) {
+                try {
+                    if (resolver == null) throw new IOException("Workspace resolver is unavailable");
+                    File fileToSave = resolver.resolve(pathToSave);
+                    writeUtf8(fileToSave, contentToSave);
+                    appendConsole("Saved before build: " + pathToSave.getRelativePath());
+                } catch (IOException e) {
                     appendConsole("SAVE ERROR: " + e.getMessage());
                     runOnUiThread(new Runnable() { @Override public void run() { buildButton.setEnabled(true); } });
                     return;
@@ -302,11 +350,6 @@ public final class MainActivity extends Activity {
             consoleText.append((consoleText.length() == 0 ? "" : "\n") + line);
             consoleScroll.post(new Runnable() { @Override public void run() { consoleScroll.fullScroll(View.FOCUS_DOWN); } });
         }});
-    }
-
-    private String relativePath(File file) {
-        if (projectRoot == null) return file.getName();
-        try { return ProjectFiles.relativePath(projectRoot, file); } catch (IOException e) { return file.getName(); }
     }
 
     private String displayName(Uri uri) {

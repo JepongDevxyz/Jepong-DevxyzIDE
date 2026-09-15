@@ -12,6 +12,7 @@ javac -d "$OUT" \
   "$ROOT/host-tests/ProjectPathHostTest.java" \
   "$ROOT/host-tests/WorkspacePathResolverHostTest.java" \
   "$ROOT/host-tests/ProjectDirectoryServiceHostTest.java" \
+  "$ROOT/host-tests/ProjectFileServiceHostTest.java" \
   $CORE_SOURCES \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/ApkLocator.java" \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java"
@@ -21,6 +22,7 @@ java -cp "$OUT" RuntimeCatalogHostTest
 java -cp "$OUT" ProjectPathHostTest
 java -cp "$OUT" WorkspacePathResolverHostTest
 java -cp "$OUT" ProjectDirectoryServiceHostTest
+java -cp "$OUT" ProjectFileServiceHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
 python3 "$ROOT/host-tests/bootstrap_stamp_test.py"

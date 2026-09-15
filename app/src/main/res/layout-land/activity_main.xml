@@ -54,6 +54,14 @@
                 android:text="@string/import_zip" />
 
             <Button
+                android:id="@+id/backupButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:enabled="false"
+                android:text="@string/backup_project" />
+
+            <Button
                 android:id="@+id/toolchainButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

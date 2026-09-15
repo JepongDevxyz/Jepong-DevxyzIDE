@@ -1,0 +1,1 @@
+API 28 baseline + API 35 modern install/launch + APK signature/integrity/ABI checks.

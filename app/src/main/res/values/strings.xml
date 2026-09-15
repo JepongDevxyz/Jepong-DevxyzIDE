@@ -8,6 +8,8 @@
     <string name="new_file">New File</string>
     <string name="new_folder">New Folder</string>
     <string name="search">Search</string>
+    <string name="find_project">Find Project</string>
+    <string name="problems">Problems</string>
     <string name="save_all">Save All</string>
     <string name="save">Save</string>
     <string name="build">Build</string>

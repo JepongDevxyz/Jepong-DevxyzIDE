@@ -148,9 +148,12 @@ public final class ProjectTemplateGenerator {
 
     private static void writeManifest(File root, String applicationId, boolean modern) throws IOException {
         String theme = modern ? "@style/AppTheme" : "@android:style/Theme.Material.Light.NoActionBar";
+        String manifestStart = modern
+                ? "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n"
+                : "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"" + applicationId + "\">\n";
         write(new File(root, "app/src/main/AndroidManifest.xml"),
                 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"" + applicationId + "\">\n" +
+                manifestStart +
                 "    <application android:allowBackup=\"true\" android:label=\"@string/app_name\" android:theme=\"" + theme + "\">\n" +
                 "        <activity android:name=\".MainActivity\" android:exported=\"true\">\n" +
                 "            <intent-filter>\n" +

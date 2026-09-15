@@ -87,4 +87,13 @@ assert 'showProblemsDialog' in main, "Problems must be visible and navigable"
 assert '@+id/projectSearchButton' in layout and '@+id/projectSearchButton' in land_layout
 assert '@+id/problemsButton' in layout and '@+id/problemsButton' in land_layout
 
+# Portrait keeps a stacked workspace while landscape must use a real side-by-side workspace.
+assert '@+id/workspaceBody' in layout and '@+id/workspaceBody' in land_layout, "Workspace body must have a stable responsive-shell id"
+assert '@+id/projectPane' in layout and '@+id/projectPane' in land_layout, "Project pane must be addressable in both orientations"
+assert '@+id/editorPane' in layout and '@+id/editorPane' in land_layout, "Editor pane must be addressable in both orientations"
+portrait_body = layout.split('android:id="@+id/workspaceBody"', 1)[1].split('>', 1)[0]
+landscape_body = land_layout.split('android:id="@+id/workspaceBody"', 1)[1].split('>', 1)[0]
+assert 'android:orientation="vertical"' in portrait_body, "Portrait workspace must remain stacked"
+assert 'android:orientation="horizontal"' in landscape_body, "Landscape workspace must be side-by-side"
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

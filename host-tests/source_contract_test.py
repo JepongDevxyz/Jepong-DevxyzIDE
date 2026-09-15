@@ -42,7 +42,8 @@ assert 'currentFile' not in main, "Editor save state must not retain a raw File 
 # Project Explorer must list only the current directory instead of recursively scanning the full project.
 assert 'ProjectDirectoryService' in main, "MainActivity must use the lazy directory service"
 assert 'ProjectPath currentDirectory' in main, "Explorer must keep a project-relative current directory"
-assert 'directoryService.listChildren' in main, "Explorer must request immediate children from the lazy directory service"
+assert 'listDirectory(service, directory)' in main, "Explorer refresh must request a lazy immediate-child listing"
+assert 'service.listChildren(directory, MAX_DIRECTORY_CHILDREN)' in main, "Lazy directory helper must request only immediate children"
 assert 'ProjectFiles.listRelativeFiles' not in main, "Explorer must not rescan the full project tree on refresh"
 
 # Real project file actions must be backed by ProjectFileService and destructive actions need confirmation.

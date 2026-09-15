@@ -8,6 +8,7 @@ land_layout = (ROOT/'app/src/main/res/layout-land/activity_main.xml').read_text(
 main = (ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java').read_text()
 manifest = (ROOT/'app/src/main/AndroidManifest.xml').read_text()
 script = ROOT/'runtime-builder/build-devxyz-terminal-runtime.sh'
+settings_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/EditorSettingsButton.java'
 
 # AIDE Test Edition intentionally uses only platform Android widgets/classes.
 assert "dependencies {\n}" in build, "AIDE edition must not require external Maven UI/editor dependencies"
@@ -96,12 +97,14 @@ landscape_body = land_layout.split('android:id="@+id/workspaceBody"', 1)[1].spli
 assert 'android:orientation="vertical"' in portrait_body, "Portrait workspace must remain stacked"
 assert 'android:orientation="horizontal"' in landscape_body, "Landscape workspace must be side-by-side"
 
-# Editor settings must be functional, persistent, and available in both orientations.
+# Editor settings must be functional, persistent, modular, and available in both orientations.
 assert '@+id/settingsButton' in layout and '@+id/settingsButton' in land_layout, "Settings action must exist in portrait and landscape"
-assert 'SharedPreferences' in main, "Editor settings must persist across app restarts"
-assert 'EditorSettings' in main, "MainActivity must apply the validated settings model"
-assert 'showSettingsDialog' in main, "Settings action must open a functional editor settings dialog"
-assert 'setHorizontallyScrolling(!settings.isWordWrap())' in main, "Word wrap must change actual editor behavior"
-assert 'editor.setTextSize(settings.getFontSizeSp())' in main, "Font size preference must change actual editor text size"
+assert settings_view_path.is_file(), "Editor settings must live outside MainActivity"
+settings_view = settings_view_path.read_text()
+assert 'SharedPreferences' in settings_view, "Editor settings must persist across app restarts"
+assert 'EditorSettings' in settings_view, "Settings UI must apply the validated settings model"
+assert 'showSettingsDialog' in settings_view, "Settings action must open a functional editor settings dialog"
+assert 'setHorizontallyScrolling(!settings.isWordWrap())' in settings_view, "Word wrap must change actual editor behavior"
+assert 'editor.setTextSize(settings.getFontSizeSp())' in settings_view, "Font size preference must change actual editor text size"
 
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

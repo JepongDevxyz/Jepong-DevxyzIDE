@@ -7,6 +7,8 @@
     <string name="runtime_bootstrap">Runtime</string>
     <string name="new_file">New File</string>
     <string name="new_folder">New Folder</string>
+    <string name="search">Search</string>
+    <string name="save_all">Save All</string>
     <string name="save">Save</string>
     <string name="build">Build</string>
     <string name="install">Install</string>

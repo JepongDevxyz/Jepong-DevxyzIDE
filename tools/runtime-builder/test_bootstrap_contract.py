@@ -50,11 +50,11 @@ class BootstrapContractTest(unittest.TestCase):
             with self.assertRaises(ValueError): verify_bootstrap(p)
         finally: td.cleanup()
 
-    def test_builder_handles_pinned_foot_archive_checksum_drift(self):
+    def test_builder_applies_fail_closed_upstream_source_override(self):
         script = pathlib.Path("build-bootstrap.sh").read_text(encoding="utf-8")
-        self.assertIn("442a42d576ec72dd50f2d3faea8a664230a47bac79dc1eb6e7c9125ee76c130f", script)
-        self.assertIn("ee9d0e51295945157ecb33119cb2c79b276093d0fd342d959d78d772d505571c", script)
+        self.assertIn("upstream_source_overrides.py", script)
         self.assertIn("x11-packages/foot/build.sh", script)
+        self.assertNotIn("SKIP_CHECKSUM", script)
 
 
 if __name__ == "__main__":

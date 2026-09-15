@@ -13,6 +13,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -28,6 +29,7 @@ import com.jepongdevxyz.idebuild.core.TextFileClassifier;
 import com.jepongdevxyz.idebuild.core.WorkspacePathResolver;
 import com.jepongdevxyz.idebuild.core.build.ProjectAnalyzer;
 import com.jepongdevxyz.idebuild.core.build.ProjectRequirements;
+import com.jepongdevxyz.idebuild.core.build.ProjectTemplateGenerator;
 import com.jepongdevxyz.idebuild.core.toolchain.ToolchainInventory;
 import com.jepongdevxyz.idebuild.core.toolchain.TerminalBootstrapInstaller;
 import com.jepongdevxyz.idebuild.core.toolchain.ToolchainPackInstaller;
@@ -60,7 +62,7 @@ public final class MainActivity extends Activity {
     private static final long MAX_TOOLCHAIN_PACK_BYTES = 2L * 1024L * 1024L * 1024L;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
-    private Button importButton, toolchainButton, runtimeButton, newFileButton, newFolderButton;
+    private Button createProjectButton, importButton, toolchainButton, runtimeButton, newFileButton, newFolderButton;
     private Button saveButton, buildButton, installButton;
     private TextView projectPath, consoleText;
     private ScrollView consoleScroll;
@@ -81,6 +83,7 @@ public final class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        createProjectButton = (Button) findViewById(R.id.createProjectButton);
         importButton = (Button) findViewById(R.id.importButton);
         toolchainButton = (Button) findViewById(R.id.toolchainButton);
         runtimeButton = (Button) findViewById(R.id.runtimeButton);
@@ -106,6 +109,7 @@ public final class MainActivity extends Activity {
         };
         fileList.setAdapter(fileAdapter);
 
+        createProjectButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { promptCreateProject(); } });
         importButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseZip(); } });
         toolchainButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseToolchainPack(); } });
         runtimeButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseRuntimeBootstrap(); } });
@@ -131,6 +135,82 @@ public final class MainActivity extends Activity {
                 return true;
             }
         });
+    }
+
+    private void promptCreateProject() {
+        final String[] templates = new String[]{
+                "Classic Java · Gradle 4.6 / AGP 3.2.1 / SDK 28",
+                "Modern AndroidX Java · JDK 17 / SDK 35"
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Choose project template")
+                .setItems(templates, new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        ProjectTemplateGenerator.Template template = which == 0
+                                ? ProjectTemplateGenerator.Template.CLASSIC_JAVA
+                                : ProjectTemplateGenerator.Template.MODERN_ANDROIDX_JAVA;
+                        promptCreateProjectDetails(template);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void promptCreateProjectDetails(final ProjectTemplateGenerator.Template template) {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        int padding = (int) (16f * getResources().getDisplayMetrics().density + 0.5f);
+        form.setPadding(padding, padding / 2, padding, 0);
+
+        final EditText nameInput = new EditText(this);
+        nameInput.setSingleLine(true);
+        nameInput.setHint("Project name");
+        nameInput.setText("MyApp");
+        form.addView(nameInput, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        final EditText packageInput = new EditText(this);
+        packageInput.setSingleLine(true);
+        packageInput.setHint("Application ID");
+        packageInput.setText("com.example.myapp");
+        form.addView(packageInput, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        new AlertDialog.Builder(this)
+                .setTitle(template == ProjectTemplateGenerator.Template.CLASSIC_JAVA ? "New Classic Java project" : "New AndroidX Java project")
+                .setView(form)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Create", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        String name = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
+                        String applicationId = packageInput.getText() == null ? "" : packageInput.getText().toString().trim();
+                        createProject(name, applicationId, template);
+                    }
+                })
+                .show();
+    }
+
+    private void createProject(final String name, final String applicationId, final ProjectTemplateGenerator.Template template) {
+        createProjectButton.setEnabled(false);
+        appendConsole("\nCreating project: " + name);
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                File projects = projectStorageDirectory();
+                final File created = ProjectTemplateGenerator.create(projects, name, applicationId, template);
+                appendConsole("PROJECT CREATED: " + created.getAbsolutePath());
+                runOnUiThread(new Runnable() { @Override public void run() { loadProject(created); } });
+            } catch (Exception e) {
+                appendConsole("CREATE PROJECT ERROR: " + e.getMessage());
+            } finally {
+                runOnUiThread(new Runnable() { @Override public void run() { createProjectButton.setEnabled(true); } });
+            }
+        }});
+    }
+
+    private File projectStorageDirectory() throws IOException {
+        File storageRoot = getExternalFilesDir(null);
+        if (storageRoot == null) storageRoot = getFilesDir();
+        File projects = new File(storageRoot, "projects");
+        if (!projects.isDirectory() && !projects.mkdirs()) throw new IOException("Cannot create projects directory");
+        return projects;
     }
 
     private void chooseZip() { startPicker("application/zip", REQUEST_IMPORT_ZIP); }
@@ -209,10 +289,7 @@ public final class MainActivity extends Activity {
         io.execute(new Runnable() { @Override public void run() {
             InputStream input = null;
             try {
-                File storageRoot = getExternalFilesDir(null);
-                if (storageRoot == null) storageRoot = getFilesDir();
-                File projects = new File(storageRoot, "projects");
-                if (!projects.exists() && !projects.mkdirs()) throw new IOException("Cannot create projects directory");
+                File projects = projectStorageDirectory();
                 File target = uniqueDirectory(projects, sanitizeProjectName(displayName(uri)));
                 input = getContentResolver().openInputStream(uri);
                 if (input == null) throw new IOException("Cannot open ZIP input stream");

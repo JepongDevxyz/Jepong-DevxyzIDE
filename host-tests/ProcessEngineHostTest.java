@@ -55,7 +55,7 @@ public final class ProcessEngineHostTest {
         List<String> command = new ArrayList<String>();
         command.add("sh");
         command.add("-c");
-        command.add("printf 'started\\n'; sleep 20; printf 'should-not-print\\n'");
+        command.add("printf 'started\\n'; exec sleep 20");
         ProcessRequest request = new ProcessRequest(command, null, new HashMap<String, String>(), true, new ArrayList<String>());
         final CountDownLatch started = new CountDownLatch(1);
         final CountDownLatch finished = new CountDownLatch(1);

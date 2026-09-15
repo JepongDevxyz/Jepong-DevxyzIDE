@@ -76,4 +76,14 @@ assert '@+id/tabBar' in layout and '@+id/tabBar' in land_layout
 assert '@+id/searchButton' in layout and '@+id/searchButton' in land_layout
 assert '@+id/saveAllButton' in layout and '@+id/saveAllButton' in land_layout
 
+# Project search must be streamed/cancelable and build diagnostics must be navigable.
+assert 'ProjectSearchService' in main, "MainActivity must expose project-wide search"
+assert 'activeProjectSearch' in main, "Project-wide search must support cancellation"
+assert 'showProjectSearchResults' in main, "Project-wide search results must be navigable"
+assert 'BuildDiagnosticsParser' in main and 'BuildProblem' in main, "Build output must feed Problems"
+assert 'recordBuildProblem' in main, "Build lines must be parsed into Problems"
+assert 'showProblemsDialog' in main, "Problems must be visible and navigable"
+assert '@+id/projectSearchButton' in layout and '@+id/projectSearchButton' in land_layout
+assert '@+id/problemsButton' in layout and '@+id/problemsButton' in land_layout
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

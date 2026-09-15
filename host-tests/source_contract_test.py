@@ -58,4 +58,11 @@ assert 'promptCreateProject' in main, "Project creation must collect project met
 assert '@+id/createProjectButton' in layout
 assert '@+id/createProjectButton' in land_layout
 
+# Loaded projects must be exportable as source-focused ZIP backups through Android SAF.
+assert 'ProjectArchiveService' in main, "MainActivity must use the safe project archive service"
+assert 'Intent.ACTION_CREATE_DOCUMENT' in main, "Backup export must use the Android Storage Access Framework"
+assert 'ProjectArchiveService.writeSourceArchive' in main, "Backup export must archive the loaded project"
+assert '@+id/backupButton' in layout
+assert '@+id/backupButton' in land_layout
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

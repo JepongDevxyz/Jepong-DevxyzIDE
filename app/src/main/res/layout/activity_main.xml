@@ -41,9 +41,16 @@
             android:paddingBottom="8dp">
 
             <Button
+                android:id="@+id/createProjectButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/create_project" />
+
+            <Button
                 android:id="@+id/importButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
                 android:text="@string/import_zip" />
 
             <Button
@@ -192,7 +199,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="10dp"
-                android:text="DevxyzIDE ready. Import an Android project ZIP to begin."
+                android:text="DevxyzIDE ready. Create or import an Android project to begin."
                 android:textColor="@color/devxyz_text"
                 android:textSize="12sp"
                 android:typeface="monospace" />

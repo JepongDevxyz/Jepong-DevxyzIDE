@@ -15,7 +15,9 @@ import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.jepongdevxyz.idebuild.core.ProjectFiles;
+import com.jepongdevxyz.idebuild.core.ProjectDirectoryListing;
+import com.jepongdevxyz.idebuild.core.ProjectDirectoryService;
+import com.jepongdevxyz.idebuild.core.ProjectEntry;
 import com.jepongdevxyz.idebuild.core.ProjectPath;
 import com.jepongdevxyz.idebuild.core.ProjectRootDetector;
 import com.jepongdevxyz.idebuild.core.SafeZip;
@@ -47,6 +49,8 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_TOOLCHAIN_PACK = 5002;
     private static final int REQUEST_RUNTIME_BOOTSTRAP = 5003;
     private static final String PROJECT_BACKEND_ID = "local-project";
+    private static final int MAX_DIRECTORY_CHILDREN = 10000;
+    private static final String PARENT_ROW = "[UP] ..";
     private static final long MAX_IMPORT_BYTES = 8L * 1024L * 1024L * 1024L;
     private static final int MAX_IMPORT_ENTRIES = 100000;
     private static final long MAX_TEXT_BYTES = 2L * 1024L * 1024L;
@@ -59,9 +63,12 @@ public final class MainActivity extends Activity {
     private EditText editor;
     private ListView fileList;
     private ArrayAdapter<String> fileAdapter;
-    private final List<String> relativeFiles = new ArrayList<String>();
+    private final List<ProjectEntry> directoryEntries = new ArrayList<ProjectEntry>();
+    private final List<String> explorerRows = new ArrayList<String>();
     private File projectRoot;
     private WorkspacePathResolver workspacePathResolver;
+    private ProjectDirectoryService directoryService;
+    private ProjectPath currentDirectory;
     private ProjectPath currentPath;
     private File lastBuiltApk;
 
@@ -81,7 +88,7 @@ public final class MainActivity extends Activity {
         editor = (EditText) findViewById(R.id.editor);
         fileList = (ListView) findViewById(R.id.fileList);
 
-        fileAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, relativeFiles) {
+        fileAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, explorerRows) {
             @Override public View getView(int position, View convertView, android.view.ViewGroup parent) {
                 TextView view = (TextView) super.getView(position, convertView, parent);
                 view.setTextColor(getResources().getColor(R.color.devxyz_text));
@@ -104,7 +111,7 @@ public final class MainActivity extends Activity {
         });
         fileList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                openRelativeFile(relativeFiles.get(position));
+                openExplorerRow(position);
             }
         });
     }
@@ -220,14 +227,16 @@ public final class MainActivity extends Activity {
 
         projectRoot = canonicalRoot;
         workspacePathResolver = resolver;
+        directoryService = new ProjectDirectoryService(resolver);
+        currentDirectory = ProjectPath.of(PROJECT_BACKEND_ID, "");
         currentPath = null;
         lastBuiltApk = null;
-        projectPath.setText(canonicalRoot.getAbsolutePath());
+        updateProjectPathLabel();
         saveButton.setEnabled(false);
         buildButton.setEnabled(true);
         installButton.setEnabled(false);
         editor.setText("");
-        refreshProjectFiles();
+        refreshCurrentDirectory();
         appendConsole("Loaded project: " + canonicalRoot.getName());
         if (!new File(canonicalRoot, "gradlew").isFile()) appendConsole("No project Gradle Wrapper found; DevxyzIDE will try its internal Gradle runtime at build time.");
         analyzeProject(canonicalRoot);
@@ -246,30 +255,79 @@ public final class MainActivity extends Activity {
         }});
     }
 
-    private void refreshProjectFiles() {
-        if (projectRoot == null) return;
-        final File root = projectRoot;
+    private void refreshCurrentDirectory() {
+        final ProjectDirectoryService service = directoryService;
+        final ProjectPath directory = currentDirectory;
+        if (service == null || directory == null) return;
+
         io.execute(new Runnable() { @Override public void run() {
             try {
-                final List<String> files = ProjectFiles.listRelativeFiles(root, 20000);
+                final ProjectDirectoryListing listing = listDirectory(service, directory);
                 runOnUiThread(new Runnable() { @Override public void run() {
-                    relativeFiles.clear(); relativeFiles.addAll(files); fileAdapter.notifyDataSetChanged();
+                    if (directoryService != service || !sameProjectPath(currentDirectory, directory)) return;
+
+                    directoryEntries.clear();
+                    directoryEntries.addAll(listing.getEntries());
+                    explorerRows.clear();
+                    if (directory.parent() != null) explorerRows.add(PARENT_ROW);
+                    for (ProjectEntry entry : directoryEntries) {
+                        explorerRows.add((entry.isDirectory() ? "[DIR] " : "      ") + entry.getName());
+                    }
+                    fileAdapter.notifyDataSetChanged();
+                    updateProjectPathLabel();
+                    if (listing.isTruncated()) {
+                        appendConsole("Explorer shows the first " + MAX_DIRECTORY_CHILDREN + " entries in this folder.");
+                    }
                 }});
             } catch (Exception e) { appendConsole("FILE LIST ERROR: " + e.getMessage()); }
         }});
     }
 
-    private void openRelativeFile(final String relative) {
-        final WorkspacePathResolver resolver = workspacePathResolver;
-        if (resolver == null) return;
+    private ProjectDirectoryListing listDirectory(ProjectDirectoryService directoryService, ProjectPath directory) throws IOException {
+        return directoryService.listChildren(directory, MAX_DIRECTORY_CHILDREN);
+    }
 
-        final ProjectPath path;
-        try {
-            path = ProjectPath.of(PROJECT_BACKEND_ID, relative);
-        } catch (IllegalArgumentException e) {
-            appendConsole("OPEN ERROR: " + e.getMessage());
+    private void openExplorerRow(int position) {
+        ProjectPath directory = currentDirectory;
+        if (directory == null) return;
+
+        ProjectPath parent = directory.parent();
+        int parentOffset = parent == null ? 0 : 1;
+        if (parent != null && position == 0) {
+            currentDirectory = parent;
+            refreshCurrentDirectory();
             return;
         }
+
+        int entryIndex = position - parentOffset;
+        if (entryIndex < 0 || entryIndex >= directoryEntries.size()) return;
+        ProjectEntry entry = directoryEntries.get(entryIndex);
+        if (entry.isDirectory()) {
+            currentDirectory = entry.getPath();
+            refreshCurrentDirectory();
+        } else {
+            openProjectFile(entry.getPath());
+        }
+    }
+
+    private void updateProjectPathLabel() {
+        if (projectRoot == null || currentDirectory == null) return;
+        String relative = currentDirectory.getRelativePath();
+        projectPath.setText(relative.length() == 0
+                ? projectRoot.getAbsolutePath()
+                : projectRoot.getAbsolutePath() + File.separator + relative.replace('/', File.separatorChar));
+    }
+
+    private static boolean sameProjectPath(ProjectPath left, ProjectPath right) {
+        return left != null
+                && right != null
+                && left.getBackendId().equals(right.getBackendId())
+                && left.getRelativePath().equals(right.getRelativePath());
+    }
+
+    private void openProjectFile(final ProjectPath path) {
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        if (resolver == null || path == null) return;
 
         if (!TextFileClassifier.isTextFile(path.getRelativePath())) {
             appendConsole("Binary/non-text file not opened: " + path.getRelativePath());

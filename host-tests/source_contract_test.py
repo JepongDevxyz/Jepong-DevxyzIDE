@@ -96,4 +96,12 @@ landscape_body = land_layout.split('android:id="@+id/workspaceBody"', 1)[1].spli
 assert 'android:orientation="vertical"' in portrait_body, "Portrait workspace must remain stacked"
 assert 'android:orientation="horizontal"' in landscape_body, "Landscape workspace must be side-by-side"
 
+# Editor settings must be functional, persistent, and available in both orientations.
+assert '@+id/settingsButton' in layout and '@+id/settingsButton' in land_layout, "Settings action must exist in portrait and landscape"
+assert 'SharedPreferences' in main, "Editor settings must persist across app restarts"
+assert 'EditorSettings' in main, "MainActivity must apply the validated settings model"
+assert 'showSettingsDialog' in main, "Settings action must open a functional editor settings dialog"
+assert 'setHorizontallyScrolling(!settings.isWordWrap())' in main, "Word wrap must change actual editor behavior"
+assert 'editor.setTextSize(settings.getFontSizeSp())' in main, "Font size preference must change actual editor text size"
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

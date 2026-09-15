@@ -1,6 +1,8 @@
 package com.jepongdevxyz.idebuild;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -18,6 +20,7 @@ import android.widget.TextView;
 import com.jepongdevxyz.idebuild.core.ProjectDirectoryListing;
 import com.jepongdevxyz.idebuild.core.ProjectDirectoryService;
 import com.jepongdevxyz.idebuild.core.ProjectEntry;
+import com.jepongdevxyz.idebuild.core.ProjectFileService;
 import com.jepongdevxyz.idebuild.core.ProjectPath;
 import com.jepongdevxyz.idebuild.core.ProjectRootDetector;
 import com.jepongdevxyz.idebuild.core.SafeZip;
@@ -57,7 +60,8 @@ public final class MainActivity extends Activity {
     private static final long MAX_TOOLCHAIN_PACK_BYTES = 2L * 1024L * 1024L * 1024L;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
-    private Button importButton, toolchainButton, runtimeButton, saveButton, buildButton, installButton;
+    private Button importButton, toolchainButton, runtimeButton, newFileButton, newFolderButton;
+    private Button saveButton, buildButton, installButton;
     private TextView projectPath, consoleText;
     private ScrollView consoleScroll;
     private EditText editor;
@@ -68,6 +72,7 @@ public final class MainActivity extends Activity {
     private File projectRoot;
     private WorkspacePathResolver workspacePathResolver;
     private ProjectDirectoryService directoryService;
+    private ProjectFileService fileService;
     private ProjectPath currentDirectory;
     private ProjectPath currentPath;
     private File lastBuiltApk;
@@ -79,6 +84,8 @@ public final class MainActivity extends Activity {
         importButton = (Button) findViewById(R.id.importButton);
         toolchainButton = (Button) findViewById(R.id.toolchainButton);
         runtimeButton = (Button) findViewById(R.id.runtimeButton);
+        newFileButton = (Button) findViewById(R.id.newFileButton);
+        newFolderButton = (Button) findViewById(R.id.newFolderButton);
         saveButton = (Button) findViewById(R.id.saveButton);
         buildButton = (Button) findViewById(R.id.buildButton);
         installButton = (Button) findViewById(R.id.installButton);
@@ -102,6 +109,8 @@ public final class MainActivity extends Activity {
         importButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseZip(); } });
         toolchainButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseToolchainPack(); } });
         runtimeButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseRuntimeBootstrap(); } });
+        newFileButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { promptCreateEntry(false); } });
+        newFolderButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { promptCreateEntry(true); } });
         saveButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { saveCurrentFile(); } });
         buildButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { buildProject(); } });
         installButton.setOnClickListener(new View.OnClickListener() {
@@ -112,6 +121,14 @@ public final class MainActivity extends Activity {
         fileList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 openExplorerRow(position);
+            }
+        });
+        fileList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                ProjectEntry entry = explorerEntryAt(position);
+                if (entry == null) return false;
+                showEntryActions(entry);
+                return true;
             }
         });
     }
@@ -228,10 +245,13 @@ public final class MainActivity extends Activity {
         projectRoot = canonicalRoot;
         workspacePathResolver = resolver;
         directoryService = new ProjectDirectoryService(resolver);
+        fileService = new ProjectFileService(resolver, PROJECT_BACKEND_ID);
         currentDirectory = ProjectPath.of(PROJECT_BACKEND_ID, "");
         currentPath = null;
         lastBuiltApk = null;
         updateProjectPathLabel();
+        newFileButton.setEnabled(true);
+        newFolderButton.setEnabled(true);
         saveButton.setEnabled(false);
         buildButton.setEnabled(true);
         installButton.setEnabled(false);
@@ -292,22 +312,190 @@ public final class MainActivity extends Activity {
         if (directory == null) return;
 
         ProjectPath parent = directory.parent();
-        int parentOffset = parent == null ? 0 : 1;
         if (parent != null && position == 0) {
             currentDirectory = parent;
             refreshCurrentDirectory();
             return;
         }
 
-        int entryIndex = position - parentOffset;
-        if (entryIndex < 0 || entryIndex >= directoryEntries.size()) return;
-        ProjectEntry entry = directoryEntries.get(entryIndex);
+        ProjectEntry entry = explorerEntryAt(position);
+        if (entry == null) return;
         if (entry.isDirectory()) {
             currentDirectory = entry.getPath();
             refreshCurrentDirectory();
         } else {
             openProjectFile(entry.getPath());
         }
+    }
+
+    private ProjectEntry explorerEntryAt(int position) {
+        ProjectPath directory = currentDirectory;
+        if (directory == null) return null;
+        int parentOffset = directory.parent() == null ? 0 : 1;
+        int entryIndex = position - parentOffset;
+        if (entryIndex < 0 || entryIndex >= directoryEntries.size()) return null;
+        return directoryEntries.get(entryIndex);
+    }
+
+    private void promptCreateEntry(final boolean directory) {
+        if (fileService == null || currentDirectory == null) return;
+        final EditText nameInput = new EditText(this);
+        nameInput.setSingleLine(true);
+        nameInput.setHint(directory ? "folder-name" : "File.java");
+
+        new AlertDialog.Builder(this)
+                .setTitle(directory ? "New folder" : "New file")
+                .setView(nameInput)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Create", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        String value = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
+                        if (value.length() == 0) {
+                            appendConsole("CREATE ERROR: Name must not be blank");
+                            return;
+                        }
+                        createProjectEntry(directory, value);
+                    }
+                })
+                .show();
+    }
+
+    private void createProjectEntry(final boolean directory, final String name) {
+        final ProjectFileService service = fileService;
+        final ProjectPath parent = currentDirectory;
+        if (service == null || parent == null) return;
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                final ProjectPath created = directory
+                        ? service.createDirectory(parent, name)
+                        : service.createFile(parent, name);
+                appendConsole((directory ? "Created folder: " : "Created file: ") + created.getRelativePath());
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    if (fileService != service || !sameProjectPath(currentDirectory, parent)) return;
+                    refreshCurrentDirectory();
+                    if (!directory) openProjectFile(created);
+                }});
+            } catch (Exception e) { appendConsole("CREATE ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void showEntryActions(final ProjectEntry entry) {
+        final String[] actions = new String[]{"Rename", "Duplicate", "Delete"};
+        new AlertDialog.Builder(this)
+                .setTitle(entry.getName())
+                .setItems(actions, new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        if (which == 0) promptRename(entry);
+                        else if (which == 1) duplicateEntry(entry);
+                        else if (which == 2) confirmDelete(entry);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void promptRename(final ProjectEntry entry) {
+        final EditText nameInput = new EditText(this);
+        nameInput.setSingleLine(true);
+        nameInput.setText(entry.getName());
+        nameInput.setSelection(nameInput.length());
+
+        new AlertDialog.Builder(this)
+                .setTitle("Rename")
+                .setView(nameInput)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Rename", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        String value = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
+                        if (value.length() == 0) {
+                            appendConsole("RENAME ERROR: Name must not be blank");
+                            return;
+                        }
+                        renameEntry(entry, value);
+                    }
+                })
+                .show();
+    }
+
+    private void renameEntry(final ProjectEntry entry, final String newName) {
+        final ProjectFileService service = fileService;
+        final ProjectPath parent = currentDirectory;
+        final ProjectPath oldPath = entry.getPath();
+        if (service == null || parent == null) return;
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                final ProjectPath renamed = service.rename(oldPath, newName);
+                appendConsole("Renamed: " + oldPath.getRelativePath() + " -> " + renamed.getRelativePath());
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    if (fileService != service) return;
+                    if (isSameOrDescendant(oldPath, currentPath)) closeEditor("Open file was renamed; reopen it from Project files.");
+                    if (sameProjectPath(currentDirectory, parent)) refreshCurrentDirectory();
+                }});
+            } catch (Exception e) { appendConsole("RENAME ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void duplicateEntry(final ProjectEntry entry) {
+        final ProjectFileService service = fileService;
+        final ProjectPath parent = currentDirectory;
+        if (service == null || parent == null) return;
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                ProjectPath duplicate = service.duplicate(entry.getPath());
+                appendConsole("Duplicated: " + duplicate.getRelativePath());
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    if (fileService == service && sameProjectPath(currentDirectory, parent)) refreshCurrentDirectory();
+                }});
+            } catch (Exception e) { appendConsole("DUPLICATE ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void confirmDelete(final ProjectEntry entry) {
+        String detail = entry.isDirectory()
+                ? "Delete this folder and all files inside it? This cannot be undone."
+                : "Delete this file? This cannot be undone.";
+        new AlertDialog.Builder(this)
+                .setTitle("Delete " + entry.getName() + "?")
+                .setMessage(detail)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) { deleteEntry(entry); }
+                })
+                .show();
+    }
+
+    private void deleteEntry(final ProjectEntry entry) {
+        final ProjectFileService service = fileService;
+        final ProjectPath parent = currentDirectory;
+        final ProjectPath deletedPath = entry.getPath();
+        if (service == null || parent == null) return;
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                service.delete(deletedPath);
+                appendConsole("Deleted: " + deletedPath.getRelativePath());
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    if (fileService != service) return;
+                    if (isSameOrDescendant(deletedPath, currentPath)) closeEditor("Open file was deleted.");
+                    if (sameProjectPath(currentDirectory, parent)) refreshCurrentDirectory();
+                }});
+            } catch (Exception e) { appendConsole("DELETE ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void closeEditor(String reason) {
+        currentPath = null;
+        editor.setText("");
+        saveButton.setEnabled(false);
+        appendConsole(reason);
+    }
+
+    private static boolean isSameOrDescendant(ProjectPath parent, ProjectPath candidate) {
+        if (parent == null || candidate == null) return false;
+        if (!parent.getBackendId().equals(candidate.getBackendId())) return false;
+        String parentPath = parent.getRelativePath();
+        String candidatePath = candidate.getRelativePath();
+        if (parentPath.equals(candidatePath)) return true;
+        return parentPath.length() > 0 && candidatePath.startsWith(parentPath + "/");
     }
 
     private void updateProjectPathLabel() {

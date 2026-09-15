@@ -52,4 +52,10 @@ assert 'new AlertDialog.Builder' in main, "Destructive explorer actions must use
 assert '@+id/newFileButton' in layout and '@+id/newFolderButton' in layout
 assert '@+id/newFileButton' in land_layout and '@+id/newFolderButton' in land_layout
 
+# Users must be able to create a real Gradle project from the verified templates.
+assert 'ProjectTemplateGenerator' in main, "MainActivity must expose real project creation"
+assert 'promptCreateProject' in main, "Project creation must collect project metadata before generation"
+assert '@+id/createProjectButton' in layout
+assert '@+id/createProjectButton' in land_layout
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

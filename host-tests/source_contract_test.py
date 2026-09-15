@@ -39,4 +39,10 @@ assert 'ProjectPath currentPath' in main, "Editor must retain a project-relative
 assert 'new File(projectRoot, relative)' not in main, "Raw project-relative File construction bypasses containment checks"
 assert 'currentFile' not in main, "Editor save state must not retain a raw File that can become a symlink escape"
 
+# Project Explorer must list only the current directory instead of recursively scanning the full project.
+assert 'ProjectDirectoryService' in main, "MainActivity must use the lazy directory service"
+assert 'ProjectPath currentDirectory' in main, "Explorer must keep a project-relative current directory"
+assert 'directoryService.listChildren' in main, "Explorer must request immediate children from the lazy directory service"
+assert 'ProjectFiles.listRelativeFiles' not in main, "Explorer must not rescan the full project tree on refresh"
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

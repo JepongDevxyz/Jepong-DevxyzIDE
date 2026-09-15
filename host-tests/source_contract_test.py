@@ -65,4 +65,15 @@ assert 'ProjectArchiveService.writeSourceArchive' in main, "Backup export must a
 assert '@+id/backupButton' in layout
 assert '@+id/backupButton' in land_layout
 
+# Editor UX must expose real multi-tab state, Save All, and literal search/replace.
+assert 'EditorSession' in main, "MainActivity must use the multi-tab editor session model"
+assert 'TextSearchService' in main, "MainActivity must use literal text search/replace"
+assert 'TextWatcher' in main, "Editor changes must update dirty-tab state"
+assert 'renderEditorTabs' in main, "Editor tabs must be rendered from the session model"
+assert 'saveAllOpenDocuments' in main, "Editor must support Save All"
+assert 'showSearchDialog' in main, "Editor must expose search/replace UI"
+assert '@+id/tabBar' in layout and '@+id/tabBar' in land_layout
+assert '@+id/searchButton' in layout and '@+id/searchButton' in land_layout
+assert '@+id/saveAllButton' in layout and '@+id/saveAllButton' in land_layout
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

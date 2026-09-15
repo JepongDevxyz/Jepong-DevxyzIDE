@@ -20,7 +20,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17 for Android SDK tools
+      - name: Set up JDK 17 for Android SDK tools and host tests
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -28,6 +28,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install Android SDK packages
         shell: bash
@@ -37,6 +39,10 @@ jobs:
             "platform-tools" \
             "platforms;android-28" \
             "build-tools;28.0.3"
+
+      - name: Run host and runtime compatibility tests
+        shell: bash
+        run: sh host-tests/run.sh
 
       - name: Set up JDK 8 for legacy Gradle and AGP
         uses: actions/setup-java@v5
@@ -108,6 +114,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Download built APK
         uses: actions/download-artifact@v4

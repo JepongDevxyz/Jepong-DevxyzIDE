@@ -38,8 +38,8 @@ public final class ProjectRequirements {
         this.kotlin = kotlin;
         this.compose = compose;
         this.nativeBuild = nativeBuild;
-        this.repositories = Collections.unmodifiableList(new ArrayList<>(repositories));
-        this.warnings = Collections.unmodifiableList(new ArrayList<>(warnings));
+        this.repositories = Collections.unmodifiableList(new ArrayList<String>(repositories));
+        this.warnings = Collections.unmodifiableList(new ArrayList<String>(warnings));
     }
 
     public String getGradleVersion() { return gradleVersion; }
@@ -58,14 +58,28 @@ public final class ProjectRequirements {
     public List<String> getRepositories() { return repositories; }
     public List<String> getWarnings() { return warnings; }
 
+    /** Minimum internal Gradle version required by the detected Android Gradle Plugin. */
+    public String getMinimumGradleVersion() {
+        return GradleCompatibility.minimumGradleForAgp(agpVersion);
+    }
+
+    /** Recommended JDK major for the detected AGP/Gradle combination. */
+    public int getJavaMajor() {
+        String runtimeGradle = gradleVersion;
+        if (runtimeGradle == null || runtimeGradle.length() == 0) runtimeGradle = getMinimumGradleVersion();
+        return JvmCompatibility.recommendedJavaMajor(agpVersion, runtimeGradle);
+    }
+
     public String summary() {
         return "Gradle=" + value(gradleVersion) + ", AGP=" + value(agpVersion) +
                 ", compileSdk=" + number(compileSdk) + ", minSdk=" + number(minSdk) +
-                ", targetSdk=" + number(targetSdk) + ", AndroidX=" + androidX +
-                ", Kotlin=" + kotlin + ", Compose=" + compose + ", Native=" + nativeBuild +
-                ", KotlinDSL=" + kotlinDsl + ", VersionCatalog=" + versionCatalog;
+                ", targetSdk=" + number(targetSdk) + ", Java=" + getJavaMajor() +
+                ", minimumGradle=" + value(getMinimumGradleVersion()) +
+                ", AndroidX=" + androidX + ", Kotlin=" + kotlin + ", Compose=" + compose +
+                ", Native=" + nativeBuild + ", KotlinDSL=" + kotlinDsl +
+                ", VersionCatalog=" + versionCatalog;
     }
 
-    private static String value(String text) { return text == null || text.isEmpty() ? "unknown" : text; }
+    private static String value(String text) { return text == null || text.length() == 0 ? "unknown" : text; }
     private static String number(int value) { return value > 0 ? Integer.toString(value) : "unknown"; }
 }

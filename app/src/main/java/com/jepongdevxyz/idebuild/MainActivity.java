@@ -18,6 +18,7 @@ import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.jepongdevxyz.idebuild.core.ProjectArchiveService;
 import com.jepongdevxyz.idebuild.core.ProjectDirectoryListing;
 import com.jepongdevxyz.idebuild.core.ProjectDirectoryService;
 import com.jepongdevxyz.idebuild.core.ProjectEntry;
@@ -53,6 +54,7 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_IMPORT_ZIP = 5001;
     private static final int REQUEST_TOOLCHAIN_PACK = 5002;
     private static final int REQUEST_RUNTIME_BOOTSTRAP = 5003;
+    private static final int REQUEST_EXPORT_BACKUP = 5004;
     private static final String PROJECT_BACKEND_ID = "local-project";
     private static final int MAX_DIRECTORY_CHILDREN = 10000;
     private static final String PARENT_ROW = "[UP] ..";
@@ -60,9 +62,11 @@ public final class MainActivity extends Activity {
     private static final int MAX_IMPORT_ENTRIES = 100000;
     private static final long MAX_TEXT_BYTES = 2L * 1024L * 1024L;
     private static final long MAX_TOOLCHAIN_PACK_BYTES = 2L * 1024L * 1024L * 1024L;
+    private static final int MAX_BACKUP_FILE_ENTRIES = 250000;
+    private static final long MAX_BACKUP_BYTES = 16L * 1024L * 1024L * 1024L;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
-    private Button createProjectButton, importButton, toolchainButton, runtimeButton, newFileButton, newFolderButton;
+    private Button createProjectButton, importButton, backupButton, toolchainButton, runtimeButton, newFileButton, newFolderButton;
     private Button saveButton, buildButton, installButton;
     private TextView projectPath, consoleText;
     private ScrollView consoleScroll;
@@ -85,6 +89,7 @@ public final class MainActivity extends Activity {
 
         createProjectButton = (Button) findViewById(R.id.createProjectButton);
         importButton = (Button) findViewById(R.id.importButton);
+        backupButton = (Button) findViewById(R.id.backupButton);
         toolchainButton = (Button) findViewById(R.id.toolchainButton);
         runtimeButton = (Button) findViewById(R.id.runtimeButton);
         newFileButton = (Button) findViewById(R.id.newFileButton);
@@ -111,6 +116,7 @@ public final class MainActivity extends Activity {
 
         createProjectButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { promptCreateProject(); } });
         importButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseZip(); } });
+        backupButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseBackupDestination(); } });
         toolchainButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseToolchainPack(); } });
         runtimeButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseRuntimeBootstrap(); } });
         newFileButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { promptCreateEntry(false); } });
@@ -217,6 +223,15 @@ public final class MainActivity extends Activity {
     private void chooseToolchainPack() { startPicker("application/zip", REQUEST_TOOLCHAIN_PACK); }
     private void chooseRuntimeBootstrap() { startPicker("application/zip", REQUEST_RUNTIME_BOOTSTRAP); }
 
+    private void chooseBackupDestination() {
+        if (projectRoot == null) return;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/zip");
+        intent.putExtra(Intent.EXTRA_TITLE, sanitizeProjectName(projectRoot.getName()) + "-backup.zip");
+        startActivityForResult(intent, REQUEST_EXPORT_BACKUP);
+    }
+
     private void startPicker(String type, int requestCode) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -230,6 +245,41 @@ public final class MainActivity extends Activity {
         if (requestCode == REQUEST_IMPORT_ZIP) importZip(data.getData());
         else if (requestCode == REQUEST_TOOLCHAIN_PACK) importToolchainPack(data.getData());
         else if (requestCode == REQUEST_RUNTIME_BOOTSTRAP) importRuntimeBootstrap(data.getData());
+        else if (requestCode == REQUEST_EXPORT_BACKUP) exportProjectBackup(data.getData());
+    }
+
+    private void exportProjectBackup(final Uri uri) {
+        final File root = projectRoot;
+        final ProjectPath pathToSave = currentPath;
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        final String contentToSave = editor.getText() == null ? "" : editor.getText().toString();
+        if (root == null) return;
+
+        backupButton.setEnabled(false);
+        appendConsole("\nBacking up project to: " + displayName(uri));
+        io.execute(new Runnable() { @Override public void run() {
+            OutputStream output = null;
+            try {
+                if (pathToSave != null) {
+                    if (resolver == null) throw new IOException("Workspace resolver is unavailable");
+                    writeUtf8(resolver.resolve(pathToSave), contentToSave);
+                    appendConsole("Saved before backup: " + pathToSave.getRelativePath());
+                }
+                output = new BufferedOutputStream(getContentResolver().openOutputStream(uri));
+                if (output == null) throw new IOException("Cannot open backup destination");
+                ProjectArchiveService.ArchiveResult result = ProjectArchiveService.writeSourceArchive(
+                        root, output, MAX_BACKUP_FILE_ENTRIES, MAX_BACKUP_BYTES);
+                output.flush();
+                appendConsole("BACKUP COMPLETE: " + result.getFileEntries() + " files, " + humanBytes(result.getUncompressedBytes()));
+            } catch (Exception e) {
+                appendConsole("BACKUP ERROR: " + e.getMessage());
+            } finally {
+                closeQuietly(output);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    backupButton.setEnabled(projectRoot != null);
+                }});
+            }
+        }});
     }
 
     private void importRuntimeBootstrap(final Uri uri) {
@@ -327,6 +377,7 @@ public final class MainActivity extends Activity {
         currentPath = null;
         lastBuiltApk = null;
         updateProjectPathLabel();
+        backupButton.setEnabled(true);
         newFileButton.setEnabled(true);
         newFolderButton.setEnabled(true);
         saveButton.setEnabled(false);

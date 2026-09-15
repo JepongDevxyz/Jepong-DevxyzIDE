@@ -28,8 +28,10 @@ public final class ProjectTemplateGeneratorHostTest {
             assertTrue(new File(root, "app/src/main/AndroidManifest.xml").isFile());
             assertTrue(new File(root, "app/src/main/java/com/example/classicapp/MainActivity.java").isFile());
             String appGradle = read(new File(root, "app/build.gradle"));
+            String manifest = read(new File(root, "app/src/main/AndroidManifest.xml"));
             assertContains(appGradle, "compileSdkVersion 28");
             assertContains(appGradle, "applicationId 'com.example.classicapp'");
+            assertContains(manifest, "package=\"com.example.classicapp\"");
             assertContains(read(new File(root, "build.gradle")), "com.android.tools.build:gradle:3.2.1");
             passed++;
         } finally {
@@ -47,12 +49,14 @@ public final class ProjectTemplateGeneratorHostTest {
                     ProjectTemplateGenerator.Template.MODERN_ANDROIDX_JAVA);
             String appGradle = read(new File(root, "app/build.gradle"));
             String rootGradle = read(new File(root, "build.gradle"));
+            String manifest = read(new File(root, "app/src/main/AndroidManifest.xml"));
             String activity = read(new File(root, "app/src/main/java/com/example/modernapp/MainActivity.java"));
             assertContains(rootGradle, "com.android.application");
             assertContains(appGradle, "namespace 'com.example.modernapp'");
             assertContains(appGradle, "compileSdk 35");
             assertContains(appGradle, "androidx.appcompat:appcompat");
             assertContains(activity, "androidx.appcompat.app.AppCompatActivity");
+            assertNotContains(manifest, "package=\"");
             passed++;
         } finally {
             deleteTree(parent);
@@ -97,6 +101,10 @@ public final class ProjectTemplateGeneratorHostTest {
 
     private static void assertContains(String value, String expected) {
         if (value.indexOf(expected) < 0) throw new AssertionError("Expected text: " + expected + "\nActual:\n" + value);
+    }
+
+    private static void assertNotContains(String value, String unexpected) {
+        if (value.indexOf(unexpected) >= 0) throw new AssertionError("Unexpected text: " + unexpected + "\nActual:\n" + value);
     }
 
     private static void assertTrue(boolean value) {

@@ -16,6 +16,7 @@ javac -d "$OUT" \
   "$ROOT/host-tests/ProjectTemplateGeneratorHostTest.java" \
   "$ROOT/host-tests/ProjectArchiveServiceHostTest.java" \
   "$ROOT/host-tests/EditorSessionHostTest.java" \
+  "$ROOT/host-tests/TextSearchServiceHostTest.java" \
   $CORE_SOURCES \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/ApkLocator.java" \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java"
@@ -29,6 +30,7 @@ java -cp "$OUT" ProjectFileServiceHostTest
 java -cp "$OUT" ProjectTemplateGeneratorHostTest
 java -cp "$OUT" ProjectArchiveServiceHostTest
 java -cp "$OUT" EditorSessionHostTest
+java -cp "$OUT" TextSearchServiceHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
 python3 "$ROOT/host-tests/bootstrap_stamp_test.py"

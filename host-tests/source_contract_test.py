@@ -32,4 +32,11 @@ assert 'TerminalBootstrapInstaller.install' in main
 assert '@+id/runtimeButton' in layout
 assert '<EditText' in land_layout
 assert '@+id/runtimeButton' in land_layout
+
+# Project file open/save must resolve a ProjectPath against the trusted root each time.
+assert 'WorkspacePathResolver' in main, "MainActivity must use root-contained workspace resolution"
+assert 'ProjectPath currentPath' in main, "Editor must retain a project-relative path rather than a raw File"
+assert 'new File(projectRoot, relative)' not in main, "Raw project-relative File construction bypasses containment checks"
+assert 'currentFile' not in main, "Editor save state must not retain a raw File that can become a symlink escape"
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

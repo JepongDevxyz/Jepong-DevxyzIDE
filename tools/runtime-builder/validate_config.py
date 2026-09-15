@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import re
 
-REQUIRED = ("applicationId", "nativeBuilderRepo", "nativeBuilderCommit", "nativeAbi", "gradleVersion", "androidApi")
+REQUIRED = ("applicationId", "nativeBuilderRepo", "nativeBuilderCommit", "nativeAbi", "gradleVersion", "androidApi", "footTerminfoVersion", "footTerminfoSha256")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 EXPECTED_APP_ID = "com.jepongdevxyz.idebuild"
 EXPECTED_REPO = "https://github.com/appdevforall/terminal-packages.git"
 
@@ -48,4 +49,7 @@ def validate(config):
         raise ValueError("androidApi must be numeric")
     if api < 35:
         raise ValueError("Android API 35 or newer is required")
+    _version_tuple(config["footTerminfoVersion"])
+    if not SHA256_RE.match(config["footTerminfoSha256"]):
+        raise ValueError("footTerminfoSha256 must be a pinned lowercase SHA-256")
     return config

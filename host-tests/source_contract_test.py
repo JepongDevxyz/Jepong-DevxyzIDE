@@ -45,4 +45,11 @@ assert 'ProjectPath currentDirectory' in main, "Explorer must keep a project-rel
 assert 'directoryService.listChildren' in main, "Explorer must request immediate children from the lazy directory service"
 assert 'ProjectFiles.listRelativeFiles' not in main, "Explorer must not rescan the full project tree on refresh"
 
+# Real project file actions must be backed by ProjectFileService and destructive actions need confirmation.
+assert 'ProjectFileService' in main, "Explorer mutations must use the safe project file service"
+assert 'setOnItemLongClickListener' in main, "Explorer must expose rename/duplicate/delete actions"
+assert 'new AlertDialog.Builder' in main, "Destructive explorer actions must use an explicit confirmation dialog"
+assert '@+id/newFileButton' in layout and '@+id/newFolderButton' in layout
+assert '@+id/newFileButton' in land_layout and '@+id/newFolderButton' in land_layout
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

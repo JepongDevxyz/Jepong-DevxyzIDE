@@ -1,8 +1,16 @@
 <resources>
     <string name="app_name">DevxyzIDE</string>
+    <string name="create_project">New Project</string>
     <string name="import_zip">Import ZIP</string>
+    <string name="backup_project">Backup ZIP</string>
     <string name="toolchains">Toolchains</string>
     <string name="runtime_bootstrap">Runtime</string>
+    <string name="new_file">New File</string>
+    <string name="new_folder">New Folder</string>
+    <string name="search">Search</string>
+    <string name="find_project">Find Project</string>
+    <string name="problems">Problems</string>
+    <string name="save_all">Save All</string>
     <string name="save">Save</string>
     <string name="build">Build</string>
     <string name="install">Install</string>

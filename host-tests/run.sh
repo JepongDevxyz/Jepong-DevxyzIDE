@@ -9,12 +9,36 @@ javac -d "$OUT" \
   "$ROOT/host-tests/HostSelfTest.java" \
   "$ROOT/host-tests/HybridHostTest.java" \
   "$ROOT/host-tests/RuntimeCatalogHostTest.java" \
+  "$ROOT/host-tests/ProjectPathHostTest.java" \
+  "$ROOT/host-tests/WorkspacePathResolverHostTest.java" \
+  "$ROOT/host-tests/ProjectDirectoryServiceHostTest.java" \
+  "$ROOT/host-tests/ProjectFileServiceHostTest.java" \
+  "$ROOT/host-tests/ProjectTemplateGeneratorHostTest.java" \
+  "$ROOT/host-tests/ProjectArchiveServiceHostTest.java" \
+  "$ROOT/host-tests/EditorSessionHostTest.java" \
+  "$ROOT/host-tests/EditorSettingsHostTest.java" \
+  "$ROOT/host-tests/TextSearchServiceHostTest.java" \
+  "$ROOT/host-tests/ProjectSearchServiceHostTest.java" \
+  "$ROOT/host-tests/BuildDiagnosticsParserHostTest.java" \
+  "$ROOT/host-tests/ProcessEngineHostTest.java" \
   $CORE_SOURCES \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/ApkLocator.java" \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java"
 java -cp "$OUT" HostSelfTest
 java -cp "$OUT" HybridHostTest
 java -cp "$OUT" RuntimeCatalogHostTest
+java -cp "$OUT" ProjectPathHostTest
+java -cp "$OUT" WorkspacePathResolverHostTest
+java -cp "$OUT" ProjectDirectoryServiceHostTest
+java -cp "$OUT" ProjectFileServiceHostTest
+java -cp "$OUT" ProjectTemplateGeneratorHostTest
+java -cp "$OUT" ProjectArchiveServiceHostTest
+java -cp "$OUT" EditorSessionHostTest
+java -cp "$OUT" EditorSettingsHostTest
+java -cp "$OUT" TextSearchServiceHostTest
+java -cp "$OUT" ProjectSearchServiceHostTest
+java -cp "$OUT" BuildDiagnosticsParserHostTest
+java -cp "$OUT" ProcessEngineHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
 python3 "$ROOT/host-tests/bootstrap_stamp_test.py"

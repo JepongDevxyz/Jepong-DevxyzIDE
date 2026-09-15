@@ -4,11 +4,17 @@ import com.jepongdevxyz.idebuild.core.build.BuildPlan;
 import com.jepongdevxyz.idebuild.core.build.BuildPlanner;
 import com.jepongdevxyz.idebuild.core.build.ProjectAnalyzer;
 import com.jepongdevxyz.idebuild.core.build.ProjectRequirements;
+import com.jepongdevxyz.idebuild.core.process.ProcessEngine;
+import com.jepongdevxyz.idebuild.core.process.ProcessRequest;
+import com.jepongdevxyz.idebuild.core.process.ProcessResult;
 import com.jepongdevxyz.idebuild.core.toolchain.ToolchainProvisioningPlan;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class BuildRunner {
     public interface Listener {
@@ -16,23 +22,56 @@ public final class BuildRunner {
         void onFinished(int exitCode, File apk);
     }
 
+    public static final class BuildHandle {
+        private volatile boolean cancelled;
+        private volatile boolean finished;
+        private volatile ProcessEngine.RunningProcess runningProcess;
+
+        private BuildHandle() { }
+
+        public void cancel() {
+            cancelled = true;
+            ProcessEngine.RunningProcess running = runningProcess;
+            if (running != null) running.cancel();
+        }
+
+        public boolean isCancelled() { return cancelled; }
+        public boolean isFinished() { return finished; }
+    }
+
     private BuildRunner() {}
 
-    public static void runDebugBuild(File projectRoot, File appFilesDir, Listener listener) {
-        runBuild(projectRoot, appFilesDir, "assembleDebug", false, listener);
+    public static BuildHandle runDebugBuild(File projectRoot, File appFilesDir, Listener listener) {
+        return runBuild(projectRoot, appFilesDir, "assembleDebug", false, listener);
     }
 
-    public static void runBuild(final File projectRoot, final File appFilesDir, final String task, final boolean offline, final Listener listener) {
+    public static BuildHandle runBuild(final File projectRoot,
+                                       final File appFilesDir,
+                                       final String task,
+                                       final boolean offline,
+                                       final Listener listener) {
         if (listener == null) throw new IllegalArgumentException("listener == null");
+        final BuildHandle handle = new BuildHandle();
         new Thread(new Runnable() {
             @Override public void run() {
-                BuildRunner.run(projectRoot, appFilesDir, task, offline, listener);
+                BuildRunner.prepareAndStart(projectRoot, appFilesDir, task, offline, listener, handle);
             }
-        }, "DevxyzIDE-Gradle").start();
+        }, "DevxyzIDE-Gradle-Prepare").start();
+        return handle;
     }
 
-    private static void run(File projectRoot, File appFilesDir, String task, boolean offline, Listener listener) {
+    private static void prepareAndStart(final File projectRoot,
+                                        final File appFilesDir,
+                                        String task,
+                                        final boolean offline,
+                                        final Listener listener,
+                                        final BuildHandle handle) {
         try {
+            if (handle.cancelled) {
+                finish(handle, listener, 130, null);
+                return;
+            }
+
             ProjectRequirements requirements = ProjectAnalyzer.analyze(projectRoot);
             emitProjectReport(requirements, listener);
             ToolchainProvisioningPlan provisioning = ToolchainProvisioningPlan.create(requirements, appFilesDir);
@@ -43,14 +82,14 @@ public final class BuildRunner {
             if (!plan.canBuild()) {
                 for (String blocker : plan.getBlockers()) listener.onLine("PRECHECK BLOCKER: " + blocker);
                 listener.onLine("BUILD NOT STARTED: install the missing DevxyzIDE toolchain components first.");
-                listener.onFinished(3, null);
+                finish(handle, listener, 3, null);
                 return;
             }
 
             File wrapper = new File(projectRoot, "gradlew");
             String minimumInternalGradle = com.jepongdevxyz.idebuild.core.build.GradleCompatibility.minimumGradleForAgp(requirements.getAgpVersion());
             File internalGradle = com.jepongdevxyz.idebuild.core.toolchain.RuntimeLayout.findGradleExecutable(appFilesDir, minimumInternalGradle);
-            File gradleLauncher = requirements.isWrapperComplete() ? wrapper : internalGradle;
+            final File gradleLauncher = requirements.isWrapperComplete() ? wrapper : internalGradle;
             if (gradleLauncher == null || !gradleLauncher.isFile()) throw new IOException("No usable Gradle launcher found");
             File javaBinary = new File(plan.getJavaHome(), "bin/java");
             File aapt2 = plan.getAapt2();
@@ -78,27 +117,46 @@ public final class BuildRunner {
             listener.onLine("Maven cache: " + new File(gradleHome, "caches/modules-2/files-2.1").getAbsolutePath());
             listener.onLine("Gradle command: " + gradleLauncher.getName() + " " + joinArgumentsForDisplay(plan.getArguments()));
 
-            ProcessBuilder pb = new ProcessBuilder(command);
-            pb.directory(projectRoot);
-            pb.redirectErrorStream(true);
-            Map<String, String> env = pb.environment();
-            env.putAll(plan.getEnvironment());
-            env.put("HOME", appFilesDir.getAbsolutePath());
-            String oldPath = env.get("PATH");
-            env.put("PATH", javaBinary.getParentFile().getAbsolutePath() + File.pathSeparator + (oldPath == null ? "" : oldPath));
+            Map<String, String> environment = new HashMap<String, String>();
+            environment.putAll(plan.getEnvironment());
+            environment.put("HOME", appFilesDir.getAbsolutePath());
+            String oldPath = System.getenv("PATH");
+            environment.put("PATH", javaBinary.getParentFile().getAbsolutePath() + File.pathSeparator + (oldPath == null ? "" : oldPath));
 
-            Process process = pb.start();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) listener.onLine(line);
+            if (handle.cancelled) {
+                finish(handle, listener, 130, null);
+                return;
             }
-            int exit = process.waitFor();
-            File apk = exit == 0 ? ApkLocator.findDebugApk(projectRoot) : null;
-            listener.onFinished(exit, apk);
+
+            ProcessRequest request = new ProcessRequest(
+                    command,
+                    projectRoot,
+                    environment,
+                    true,
+                    new ArrayList<String>());
+
+            ProcessEngine.RunningProcess running = ProcessEngine.start(request, new ProcessEngine.Listener() {
+                @Override public void onStdout(String line) { listener.onLine(line); }
+                @Override public void onStderr(String line) { listener.onLine(line); }
+                @Override public void onFinished(ProcessResult result) {
+                    int exit = result.isCancelled() ? 130 : result.getExitCode();
+                    File apk = exit == 0 ? ApkLocator.findDebugApk(projectRoot) : null;
+                    finish(handle, listener, exit, apk);
+                }
+            });
+            handle.runningProcess = running;
+            if (handle.cancelled) running.cancel();
         } catch (Exception e) {
             listener.onLine("BUILD ERROR: " + e.getClass().getSimpleName() + ": " + safeMessage(e));
-            listener.onFinished(1, null);
+            finish(handle, listener, handle.cancelled ? 130 : 1, null);
         }
+    }
+
+    private static synchronized void finish(BuildHandle handle, Listener listener, int exitCode, File apk) {
+        if (handle.finished) return;
+        handle.finished = true;
+        handle.runningProcess = null;
+        listener.onFinished(exitCode, apk);
     }
 
     public static String describeProject(ProjectRequirements requirements) {

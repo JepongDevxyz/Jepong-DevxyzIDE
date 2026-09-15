@@ -6,7 +6,8 @@ public final class ProjectPathHostTest {
         rejectsParentTraversal();
         rejectsAbsolutePaths();
         validatesChildNames();
-        System.out.println("PROJECT PATH HOST TESTS PASSED: 4/4");
+        resolvesParentPaths();
+        System.out.println("PROJECT PATH HOST TESTS PASSED: 5/5");
     }
 
     private static void normalizesProjectRelativePaths() {
@@ -46,6 +47,18 @@ public final class ProjectPathHostTest {
             rejected = true;
         }
         require(rejected, "child names containing traversal/separators must be rejected");
+    }
+
+    private static void resolvesParentPaths() {
+        ProjectPath nested = ProjectPath.of("private", "app/src/main");
+        ProjectPath parent = nested.parent();
+        require(parent != null, "nested path must have a parent");
+        require("app/src".equals(parent.getRelativePath()), "parent must remove exactly one path segment");
+        require("private".equals(parent.getBackendId()), "parent must preserve backend id");
+
+        ProjectPath topLevel = ProjectPath.of("private", "app");
+        require("".equals(topLevel.parent().getRelativePath()), "top-level parent must be project root");
+        require(ProjectPath.of("private", "").parent() == null, "project root must not have a parent");
     }
 
     private static void require(boolean condition, String message) {

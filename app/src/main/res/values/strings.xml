@@ -2,6 +2,7 @@
     <string name="app_name">DevxyzIDE</string>
     <string name="create_project">New Project</string>
     <string name="import_zip">Import ZIP</string>
+    <string name="backup_project">Backup ZIP</string>
     <string name="toolchains">Toolchains</string>
     <string name="runtime_bootstrap">Runtime</string>
     <string name="new_file">New File</string>

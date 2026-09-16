@@ -30,8 +30,12 @@ require("getUserMessage()" in capability, "Capability must expose a user-facing 
 registry = read("app/src/main/java/com/jepongdevxyz/idebuild/core/capability/CapabilityRegistry.java")
 require("apkSigning(" in registry, "CapabilityRegistry must centralize APK signing state")
 require("gradleBuild(" in registry, "CapabilityRegistry must centralize Gradle build state")
+require("terminal(" in registry, "CapabilityRegistry must centralize terminal state")
+require("git(" in registry, "CapabilityRegistry must centralize Git state")
 require("RuntimeLayout.findApksigner" in registry, "APK signing capability must use real signer detection")
 require("BuildRunner.findGradleExecutable" in registry, "Gradle capability must use real Gradle detection")
+require("TerminalCommandPlanner.describeShell" in registry, "Terminal capability must use real shell detection")
+require("GitService.isGitAvailable" in registry, "Git capability must use real Git detection")
 require("NEEDS_INSTALL" in registry, "Registry must report install-needed states")
 require("UNAVAILABLE" in registry, "Registry must report unavailable states")
 
@@ -42,6 +46,14 @@ require("CapabilityStatus.AVAILABLE" in signing_activity, "APK signing UI must c
 build_actions = read("app/src/main/java/com/jepongdevxyz/idebuild/BuildActionsButton.java")
 require("CapabilityRegistry.gradleBuild" in build_actions, "Build actions UI must derive from CapabilityRegistry")
 require("getUserMessage()" in build_actions, "Build actions UI must show registry reason when disabled")
+
+terminal_button = read("app/src/main/java/com/jepongdevxyz/idebuild/TerminalButton.java")
+require("CapabilityRegistry.terminal" in terminal_button, "Terminal UI must derive from CapabilityRegistry")
+require("CapabilityStatus.UNAVAILABLE" in terminal_button, "Terminal UI must honor unavailable shell state")
+
+git_button = read("app/src/main/java/com/jepongdevxyz/idebuild/GitButton.java")
+require("CapabilityRegistry.git" in git_button, "Git UI must derive from CapabilityRegistry")
+require("CapabilityStatus.NEEDS_INSTALL" in git_button, "Git UI must honor missing Git state")
 
 run_sh = read("host-tests/run.sh")
 require("capability_registry_contract_test.py" in run_sh, "Host test runner must include capability registry contract")

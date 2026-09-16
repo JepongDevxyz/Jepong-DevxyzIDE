@@ -29,6 +29,7 @@ javac -d "$OUT" \
   "$ROOT/host-tests/SqlQueryGuardHostTest.java" \
   "$ROOT/host-tests/BoundedLogBufferHostTest.java" \
   "$ROOT/host-tests/CacheMaintenanceServiceHostTest.java" \
+  "$ROOT/host-tests/SyntaxLanguageServiceHostTest.java" \
   $CORE_SOURCES \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/ApkLocator.java" \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java"
@@ -55,6 +56,7 @@ java -cp "$OUT" ResourceIndexServiceHostTest
 java -cp "$OUT" SqlQueryGuardHostTest
 java -cp "$OUT" BoundedLogBufferHostTest
 java -cp "$OUT" CacheMaintenanceServiceHostTest
+java -cp "$OUT" SyntaxLanguageServiceHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
 python3 "$ROOT/host-tests/developer_tools_contract_test.py"
 python3 "$ROOT/host-tests/terminal_log_contract_test.py"

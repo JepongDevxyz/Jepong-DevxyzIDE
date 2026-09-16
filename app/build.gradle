@@ -7,8 +7,8 @@ android {
         applicationId 'com.jepongdevxyz.idebuild'
         minSdkVersion 21
         targetSdkVersion 28
-        versionCode 6
-        versionName '0.6.0-aide-test'
+        versionCode 7
+        versionName '0.6.1-device-install'
     }
 
     buildTypes {

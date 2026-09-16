@@ -375,3 +375,47 @@ jobs:
             sleep 3
             adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.devxyzsamplekotlin"
             adb shell am force-stop com.jepongdevxyz.devxyzsamplekotlin
+
+  release_bundle:
+    name: Package verified source ZIP
+    needs: [emulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact verified source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Package exact verified source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/CAPABILITY_MATRIX.md
+          test -s docs/VERIFICATION_REPORT.md
+          rm -rf release-bundle DevxyzIDE-verified-source.zip DevxyzIDE-verified-source.zip.sha256
+          mkdir -p release-bundle/DevxyzIDE-verified-source
+          git archive --format=tar HEAD | tar -x -C release-bundle/DevxyzIDE-verified-source
+          cat > release-bundle/DevxyzIDE-verified-source/VERIFICATION_METADATA.txt <<EOF
+          DevxyzIDE verified source bundle
+          commit=$GITHUB_SHA
+          workflow_run_id=$GITHUB_RUN_ID
+          workflow_run_number=$GITHUB_RUN_NUMBER
+          ref=$GITHUB_REF
+          generated_utc=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          gate=build+templates+emulator
+          EOF
+          (cd release-bundle && zip -qr ../DevxyzIDE-verified-source.zip DevxyzIDE-verified-source)
+          unzip -t DevxyzIDE-verified-source.zip
+          sha256sum DevxyzIDE-verified-source.zip > DevxyzIDE-verified-source.zip.sha256
+
+      - name: Upload verified source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevxyzIDE-verified-source
+          path: |
+            DevxyzIDE-verified-source.zip
+            DevxyzIDE-verified-source.zip.sha256
+          if-no-files-found: error
+          retention-days: 14

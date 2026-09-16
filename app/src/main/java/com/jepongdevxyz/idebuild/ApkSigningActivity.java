@@ -13,6 +13,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.jepongdevxyz.idebuild.core.capability.Capability;
+import com.jepongdevxyz.idebuild.core.capability.CapabilityRegistry;
+import com.jepongdevxyz.idebuild.core.capability.CapabilityStatus;
 import com.jepongdevxyz.idebuild.core.signing.ApkSignerService;
 import com.jepongdevxyz.idebuild.core.signing.ApkSigningResult;
 import com.jepongdevxyz.idebuild.core.toolchain.RuntimeLayout;
@@ -163,6 +166,7 @@ public final class ApkSigningActivity extends Activity {
     }
 
     private void refreshCapabilityState() {
+        Capability capability = CapabilityRegistry.apkSigning(getFilesDir(), inputApk, keyStoreUri != null);
         apkLabel.setText(inputApk == null
                 ? "APK: no debug APK found. Build the project first."
                 : "APK: " + inputApk.getAbsolutePath());
@@ -170,7 +174,10 @@ public final class ApkSigningActivity extends Activity {
                 ? "Signer: APK signer component not installed."
                 : "Signer: " + signer.getAbsolutePath());
         keyStoreLabel.setText(keyStoreUri == null ? "Keystore: not selected" : "Keystore: selected via Android document picker");
-        signButton.setEnabled(inputApk != null && inputApk.isFile() && signer != null && keyStoreUri != null);
+        signButton.setEnabled(capability.getStatus() == CapabilityStatus.AVAILABLE);
+        if (status != null && capability.getStatus() != CapabilityStatus.AVAILABLE && status.length() == 0) {
+            status.setText(capability.getStatus().name() + ": " + capability.getUserMessage());
+        }
     }
 
     private void chooseKeyStore() {

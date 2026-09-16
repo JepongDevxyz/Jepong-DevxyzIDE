@@ -153,24 +153,20 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            set -eu
-            SIGNED_APK="verified-device-artifact/DevxyzIDE-v0.6.1-installable.apk"
-            PACKAGE="com.jepongdevxyz.idebuild"
-            test -s "$SIGNED_APK"
+            test -s verified-device-artifact/DevxyzIDE-v0.6.1-installable.apk
             adb wait-for-device
             adb shell getprop ro.build.version.sdk | tr -d '\r' | tee device-sdk.txt
-            grep -Fx "28" device-sdk.txt
-            adb uninstall "$PACKAGE" >/dev/null 2>&1 || true
-            adb install "$SIGNED_APK" | tee device-install.txt
-            grep -F "Success" device-install.txt
-            adb shell pm list packages | grep -F "package:$PACKAGE" | tee device-package.txt
-            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install" | tee device-version.txt
-            adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1 | tee device-launch.txt
+            grep -Fx 28 device-sdk.txt
+            adb uninstall com.jepongdevxyz.idebuild >/dev/null 2>&1 || true
+            adb install verified-device-artifact/DevxyzIDE-v0.6.1-installable.apk | tee device-install.txt
+            grep -F Success device-install.txt
+            adb shell pm list packages | grep -F package:com.jepongdevxyz.idebuild | tee device-package.txt
+            adb shell dumpsys package com.jepongdevxyz.idebuild | grep -F versionName=0.6.1-device-install | tee device-version.txt
+            adb shell monkey -p com.jepongdevxyz.idebuild -c android.intent.category.LAUNCHER 1 | tee device-launch.txt
             sleep 5
-            adb shell dumpsys activity activities | grep -F "$PACKAGE" | head -n 1 | tee device-activity.txt
-            PID="$(adb shell pidof "$PACKAGE" | tr -d '\r' || true)"
-            test -n "$PID"
-            printf '%s\n' "$PID" | tee device-pid.txt
+            adb shell dumpsys activity activities | grep -F com.jepongdevxyz.idebuild | head -n 1 | tee device-activity.txt
+            adb shell pidof com.jepongdevxyz.idebuild | tr -d '\r' | tee device-pid.txt
+            test -s device-pid.txt
       - name: Upload runtime diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4

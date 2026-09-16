@@ -53,6 +53,10 @@ public final class SyntaxEditText extends EditText {
         scheduleSyntaxRefresh();
     }
 
+    public String getSourceHint() {
+        return sourceHint;
+    }
+
     public void refreshSyntaxNow() {
         syntaxHandler.removeCallbacks(syntaxRefresh);
         if (attached) EditorSyntaxStyler.apply(this, sourceHint);

@@ -691,6 +691,64 @@ public final class MainActivity extends Activity {
                 .setNegativeButton("Cancel", null).show();
     }
 
+    void requestCloseActiveTab() {
+        captureActiveEditorState();
+        requestCloseTab(editorSession.getActive());
+    }
+
+    void requestCloseOtherTabs() {
+        captureActiveEditorState();
+        final EditorDocument active = editorSession.getActive();
+        if (active == null) return;
+        final List<DocumentSaveSnapshot> dirtyOthers = snapshotDirtyDocumentsExcept(active.getPath());
+        if (dirtyOthers.isEmpty()) {
+            editorSession.closeOthers(active.getPath(), true);
+            renderActiveEditor();
+            return;
+        }
+        if (isAutosaveEnabled()) { saveSnapshotsThenCloseOthers(dirtyOthers, active.getPath(), "Autosaved and closed other tabs: "); return; }
+        new AlertDialog.Builder(this).setTitle("Unsaved changes")
+                .setMessage("Save changes in other tabs before closing them?")
+                .setPositiveButton("Save All & Close Others", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        saveSnapshotsThenCloseOthers(dirtyOthers, active.getPath(), "Saved and closed other tabs: ");
+                    }
+                })
+                .setNeutralButton("Discard Others", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        editorSession.closeOthers(active.getPath(), true);
+                        renderActiveEditor();
+                    }
+                })
+                .setNegativeButton("Cancel", null).show();
+    }
+
+    void requestCloseAllTabs() {
+        captureActiveEditorState();
+        if (editorSession.size() == 0) return;
+        final List<DocumentSaveSnapshot> dirty = snapshotDirtyDocuments();
+        if (dirty.isEmpty()) {
+            editorSession.closeAll(true);
+            renderActiveEditor();
+            return;
+        }
+        if (isAutosaveEnabled()) { saveSnapshotsThenCloseAll(dirty, "Autosaved and closed all tabs: "); return; }
+        new AlertDialog.Builder(this).setTitle("Unsaved changes")
+                .setMessage("Save changes in open tabs before closing all?")
+                .setPositiveButton("Save All & Close All", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        saveSnapshotsThenCloseAll(dirty, "Saved and closed all tabs: ");
+                    }
+                })
+                .setNeutralButton("Discard All", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        editorSession.closeAll(true);
+                        renderActiveEditor();
+                    }
+                })
+                .setNegativeButton("Cancel", null).show();
+    }
+
     private boolean isAutosaveEnabled() {
         return EditorSettingsButton.loadEditorSettings(this).isAutosaveEnabled();
     }
@@ -726,6 +784,39 @@ public final class MainActivity extends Activity {
                 }});
                 appendConsole("Autosaved and closed: " + snapshot.path.getRelativePath());
             } catch (Exception e) { appendConsole("AUTOSAVE ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void saveSnapshotsThenCloseOthers(final List<DocumentSaveSnapshot> snapshots,
+                                             final ProjectPath keep,
+                                             final String messagePrefix) {
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                writeSnapshots(snapshots, resolver);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    markSnapshotsSaved(snapshots);
+                    editorSession.closeOthers(keep, true);
+                    renderActiveEditor();
+                }});
+                appendConsole(messagePrefix + snapshots.size() + " file(s)");
+            } catch (Exception e) { appendConsole("SAVE ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void saveSnapshotsThenCloseAll(final List<DocumentSaveSnapshot> snapshots,
+                                          final String messagePrefix) {
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                writeSnapshots(snapshots, resolver);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    markSnapshotsSaved(snapshots);
+                    editorSession.closeAll(true);
+                    renderActiveEditor();
+                }});
+                appendConsole(messagePrefix + snapshots.size() + " file(s)");
+            } catch (Exception e) { appendConsole("SAVE ERROR: " + e.getMessage()); }
         }});
     }
 
@@ -851,6 +942,23 @@ public final class MainActivity extends Activity {
     private List<DocumentSaveSnapshot> snapshotOpenDocuments() {
         List<DocumentSaveSnapshot> snapshots = new ArrayList<DocumentSaveSnapshot>();
         for (EditorDocument document : editorSession.getDocuments()) snapshots.add(new DocumentSaveSnapshot(document, document.getPath(), document.getText()));
+        return snapshots;
+    }
+
+    private List<DocumentSaveSnapshot> snapshotDirtyDocuments() {
+        List<DocumentSaveSnapshot> snapshots = new ArrayList<DocumentSaveSnapshot>();
+        for (EditorDocument document : editorSession.getDocuments()) {
+            if (document.isDirty()) snapshots.add(new DocumentSaveSnapshot(document, document.getPath(), document.getText()));
+        }
+        return snapshots;
+    }
+
+    private List<DocumentSaveSnapshot> snapshotDirtyDocumentsExcept(ProjectPath keep) {
+        List<DocumentSaveSnapshot> snapshots = new ArrayList<DocumentSaveSnapshot>();
+        for (EditorDocument document : editorSession.getDocuments()) {
+            if (sameProjectPath(document.getPath(), keep)) continue;
+            if (document.isDirty()) snapshots.add(new DocumentSaveSnapshot(document, document.getPath(), document.getText()));
+        }
         return snapshots;
     }
 

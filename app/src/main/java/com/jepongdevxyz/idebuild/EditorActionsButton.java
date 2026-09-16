@@ -37,7 +37,7 @@ public final class EditorActionsButton extends Button {
         }
         String undo = editor.canUndoEdit() ? "Undo" : "Undo (unavailable)";
         String redo = editor.canRedoEdit() ? "Redo" : "Redo (unavailable)";
-        String[] actions = new String[]{undo, redo, "Go to Line"};
+        String[] actions = new String[]{undo, redo, "Go to Line", "Close Tab", "Close Others", "Close All"};
         new AlertDialog.Builder(getContext())
                 .setTitle("Editor Actions")
                 .setItems(actions, new DialogInterface.OnClickListener() {
@@ -46,8 +46,15 @@ public final class EditorActionsButton extends Button {
                             if (!editor.undoEdit()) Toast.makeText(getContext(), "Nothing to undo", Toast.LENGTH_SHORT).show();
                         } else if (which == 1) {
                             if (!editor.redoEdit()) Toast.makeText(getContext(), "Nothing to redo", Toast.LENGTH_SHORT).show();
-                        } else {
+                        } else if (which == 2) {
                             promptGoToLine(editor);
+                        } else if (getContext() instanceof MainActivity) {
+                            MainActivity activity = (MainActivity) getContext();
+                            if (which == 3) activity.requestCloseActiveTab();
+                            else if (which == 4) activity.requestCloseOtherTabs();
+                            else activity.requestCloseAllTabs();
+                        } else {
+                            Toast.makeText(getContext(), "Tab actions are unavailable", Toast.LENGTH_SHORT).show();
                         }
                     }
                 })

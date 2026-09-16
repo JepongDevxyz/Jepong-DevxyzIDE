@@ -194,6 +194,7 @@ public final class ProjectTemplateGenerator {
                 modernAndroidBlock(applicationId) +
                 (kotlin ? "\nkotlinOptions {\n    jvmTarget = '17'\n}\n" : "") +
                 "\ndependencies {\n" +
+                "    implementation platform('org.jetbrains.kotlin:kotlin-bom:2.0.21')\n" +
                 "    implementation 'androidx.appcompat:appcompat:1.7.0'\n" +
                 "}\n");
     }

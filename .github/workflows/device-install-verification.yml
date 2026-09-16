@@ -85,14 +85,19 @@ jobs:
           script: |
             set -euo pipefail
             SIGNED_APK="app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk"
+            PACKAGE="com.jepongdevxyz.idebuild"
+            ACTIVITY="com.jepongdevxyz.idebuild.SplashActivity"
             test -s "$SIGNED_APK"
             adb wait-for-device
-            adb uninstall com.jepongdevxyz.idebuild >/dev/null 2>&1 || true
+            adb uninstall "$PACKAGE" >/dev/null 2>&1 || true
             adb install -r "$SIGNED_APK"
-            adb shell pm list packages | grep -F "package:com.jepongdevxyz.idebuild"
-            adb shell monkey -p com.jepongdevxyz.idebuild -c android.intent.category.LAUNCHER 1
+            adb shell pm path "$PACKAGE" | tee /tmp/devxyz-pm-path.txt
+            grep -F "package:" /tmp/devxyz-pm-path.txt
+            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install"
+            adb shell am start -W -n "$PACKAGE/$ACTIVITY" | tee /tmp/devxyz-launch.txt
+            grep -Eq "Status: ok|Warning: Activity not started" /tmp/devxyz-launch.txt
             sleep 3
-            adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.idebuild"
+            adb shell pidof "$PACKAGE" | grep -E '[0-9]+'
 
       - name: Upload exact device-verified APK
         uses: actions/upload-artifact@v4

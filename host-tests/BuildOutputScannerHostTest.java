@@ -12,18 +12,37 @@ public final class BuildOutputScannerHostTest {
         File root = Files.createTempDirectory("devxyz-output-scan").toFile();
         try {
             write(new File(root, "app/build/outputs/apk/debug/app-debug.apk"), "apk");
+            write(new File(root, "feature/build/outputs/apk/free/debug/feature-free-debug.apk"), "flavor");
             write(new File(root, "feature/build/outputs/bundle/release/feature-release.aab"), "aab");
             write(new File(root, "app/build/intermediates/ignored.apk"), "ignore");
             write(new File(root, ".gradle/cache.apk"), "ignore");
 
             List<BuildArtifact> results = BuildOutputScanner.scan(root, 10000);
-            if (results.size() != 2) throw new AssertionError("Expected 2 artifacts but got " + results.size());
+            if (results.size() != 3) throw new AssertionError("Expected 3 artifacts but got " + results.size());
             if (!"APK".equals(results.get(0).getType())) throw new AssertionError("APK should sort first");
             if (!results.get(0).getRelativePath().equals("app/build/outputs/apk/debug/app-debug.apk")) throw new AssertionError(results.get(0).getRelativePath());
-            if (!"AAB".equals(results.get(1).getType())) throw new AssertionError("Expected AAB");
+            if (!"debug".equals(results.get(0).getVariant())) throw new AssertionError("Expected debug variant but got " + results.get(0).getVariant());
+            if (!"freeDebug".equals(results.get(1).getVariant())) throw new AssertionError("Expected freeDebug variant but got " + results.get(1).getVariant());
+            if (!"AAB".equals(results.get(2).getType())) throw new AssertionError("Expected AAB");
+            if (!"release".equals(results.get(2).getVariant())) throw new AssertionError("Expected release variant");
             if (results.get(0).getSizeBytes() != 3L) throw new AssertionError("Wrong size");
+            if (results.get(0).getModifiedTimeMillis() <= 0L) throw new AssertionError("Expected modified time");
+
+            String summary = results.get(0).describe();
+            assertContains(summary, "APK");
+            assertContains(summary, "variant=debug");
+            assertContains(summary, "3 B");
+            assertContains(summary, "app/build/outputs/apk/debug/app-debug.apk");
+            assertContains(summary, "modified=");
+
             System.out.println("BUILD OUTPUT SCANNER HOST TESTS PASSED: 1/1");
         } finally { deleteTree(root); }
+    }
+
+    private static void assertContains(String value, String expected) {
+        if (value == null || value.indexOf(expected) < 0) {
+            throw new AssertionError("Expected [" + expected + "] in [" + value + "]");
+        }
     }
 
     private static void write(File file, String value) throws Exception {

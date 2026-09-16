@@ -55,6 +55,7 @@ java -cp "$OUT" SqlQueryGuardHostTest
 java -cp "$OUT" BoundedLogBufferHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
 python3 "$ROOT/host-tests/developer_tools_contract_test.py"
+python3 "$ROOT/host-tests/terminal_log_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
 python3 "$ROOT/host-tests/bootstrap_stamp_test.py"
 python3 "$ROOT/host-tests/runtime_builder_contract_test.py"

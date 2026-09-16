@@ -47,11 +47,7 @@ public final class GitButton extends Button {
     private void showGitDialog() {
         final File repository = resolveProjectRoot();
         if (repository == null) {
-            new AlertDialog.Builder(getContext())
-                    .setTitle("Git")
-                    .setMessage("Load a project before using Git.")
-                    .setPositiveButton("OK", null)
-                    .show();
+            showCloneDialog();
             return;
         }
 
@@ -80,6 +76,7 @@ public final class GitButton extends Button {
         final Button refresh = actionButton("Status", row1);
         final Button diff = actionButton("Diff", row1);
         final Button stage = actionButton("Stage All", row1);
+        final Button unstage = actionButton("Unstage All", row1);
         root.addView(row1);
 
         final LinearLayout row2 = actionRow();
@@ -96,7 +93,7 @@ public final class GitButton extends Button {
                 .create();
         dialog.show();
 
-        final Button[] actions = new Button[]{refresh, diff, stage, commit, branches, pull, push};
+        final Button[] actions = new Button[]{refresh, diff, stage, unstage, commit, branches, pull, push};
         setEnabled(actions, false);
         append(output, scroll, "Checking Git availability...");
 
@@ -134,6 +131,14 @@ public final class GitButton extends Button {
             }
         });
 
+        unstage.setOnClickListener(new OnClickListener() {
+            @Override public void onClick(View view) {
+                perform("git reset HEAD -- .", output, scroll, new BackgroundGitOperation() {
+                    @Override public GitResult run() { return GitService.unstage(repository, "."); }
+                });
+            }
+        });
+
         commit.setOnClickListener(new OnClickListener() {
             @Override public void onClick(View view) { showCommitDialog(repository, output, scroll); }
         });
@@ -148,6 +153,87 @@ public final class GitButton extends Button {
 
         push.setOnClickListener(new OnClickListener() {
             @Override public void onClick(View view) { performRemote(repository, true, output, scroll); }
+        });
+    }
+
+    private void showCloneDialog() {
+        final LinearLayout form = new LinearLayout(getContext());
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(12), 0, dp(12), 0);
+        final EditText remote = field("Repository URL");
+        final EditText folder = field("Destination folder");
+        form.addView(remote);
+        form.addView(folder);
+
+        new AlertDialog.Builder(getContext())
+                .setTitle("Clone Repository")
+                .setMessage("No project is loaded. Clone into DevxyzIDE project storage.")
+                .setView(form)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Clone", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        final String remoteValue = text(remote);
+                        final String folderValue = text(folder);
+                        if (remoteValue.length() == 0 || folderValue.length() == 0) {
+                            showMessage("Clone Repository", "Repository URL and destination folder are required.");
+                            return;
+                        }
+                        cloneRepository(remoteValue, folderValue);
+                    }
+                })
+                .show();
+    }
+
+    private void cloneRepository(final String remote, final String folder) {
+        final File projects;
+        final File destination;
+        try {
+            File storage = getContext().getExternalFilesDir(null);
+            if (storage == null) storage = getContext().getFilesDir();
+            projects = new File(storage, "projects").getCanonicalFile();
+            if (!projects.isDirectory() && !projects.mkdirs()) throw new IllegalStateException("Cannot create project storage");
+            if (folder.indexOf('/') >= 0 || folder.indexOf('\\') >= 0 || folder.contains("..")) {
+                throw new IllegalArgumentException("Destination must be a single safe folder name");
+            }
+            destination = new File(projects, folder).getCanonicalFile();
+            String projectPrefix = projects.getCanonicalPath() + File.separator;
+            if (!destination.getCanonicalPath().startsWith(projectPrefix)) {
+                throw new IllegalArgumentException("Destination escaped project storage");
+            }
+            if (destination.exists()) throw new IllegalArgumentException("Destination already exists");
+        } catch (Exception error) {
+            showMessage("Clone Repository", "CLONE ERROR: " + safeMessage(error));
+            return;
+        }
+
+        final AlertDialog progress = new AlertDialog.Builder(getContext())
+                .setTitle("Clone Repository")
+                .setMessage("Cloning into " + destination.getName() + "...")
+                .setNegativeButton("Close", null)
+                .create();
+        progress.show();
+
+        runAsync(new BackgroundGitOperation() {
+            @Override public GitResult run() {
+                return GitService.cloneRepository(
+                        projects,
+                        remote,
+                        destination.getName(),
+                        Collections.<String, String>emptyMap(),
+                        Collections.<String>emptyList());
+            }
+        }, new ResultHandler() {
+            @Override public void onResult(GitResult result) {
+                StringBuilder message = new StringBuilder();
+                if (result.getStdout().trim().length() > 0) message.append(result.getStdout().trim()).append('\n');
+                if (result.getStderr().trim().length() > 0) message.append(result.getStderr().trim()).append('\n');
+                if (result.isSuccess()) {
+                    message.append("Clone complete: ").append(destination.getAbsolutePath());
+                } else {
+                    message.append(result.isCancelled() ? "Clone cancelled." : "Clone failed with exit " + result.getExitCode() + ".");
+                }
+                progress.setMessage(message.toString().trim());
+            }
         });
     }
 
@@ -301,6 +387,14 @@ public final class GitButton extends Button {
             current = current.getParentFile();
         }
         return buildCandidate;
+    }
+
+    private void showMessage(String title, String message) {
+        new AlertDialog.Builder(getContext())
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("OK", null)
+                .show();
     }
 
     private LinearLayout actionRow() {

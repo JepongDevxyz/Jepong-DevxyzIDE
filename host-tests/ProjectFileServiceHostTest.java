@@ -14,8 +14,10 @@ public final class ProjectFileServiceHostTest {
     public static void main(String[] args) throws Exception {
         createRenameDuplicateDeleteRoundTrip();
         duplicateChoosesNextAvailableName();
+        copyAndMoveAcrossDirectories();
+        rejectsMovingDirectoryIntoItself();
         rejectsRootMutationAndInvalidNames();
-        System.out.println("PROJECT FILE SERVICE HOST TESTS PASSED: " + passed + "/3");
+        System.out.println("PROJECT FILE SERVICE HOST TESTS PASSED: " + passed + "/5");
     }
 
     private static void createRenameDuplicateDeleteRoundTrip() throws Exception {
@@ -68,6 +70,52 @@ public final class ProjectFileServiceHostTest {
         }
     }
 
+    private static void copyAndMoveAcrossDirectories() throws Exception {
+        File root = Files.createTempDirectory("devxyz-file-move").toFile();
+        try {
+            WorkspacePathResolver resolver = new WorkspacePathResolver(root, "local-project");
+            ProjectFileService service = new ProjectFileService(resolver, "local-project");
+            ProjectPath projectRoot = ProjectPath.of("local-project", "");
+            ProjectPath src = service.createDirectory(projectRoot, "src");
+            ProjectPath dst = service.createDirectory(projectRoot, "dst");
+            ProjectPath file = service.createFile(src, "data.txt");
+            write(resolver.resolve(file), "payload");
+
+            ProjectPath copied = service.copyTo(file, dst);
+            assertEquals("dst/data.txt", copied.getRelativePath());
+            assertTrue(resolver.resolve(file).isFile());
+            assertEquals("payload", read(resolver.resolve(copied)));
+
+            ProjectPath moved = service.moveTo(file, dst, "moved.txt");
+            assertEquals("dst/moved.txt", moved.getRelativePath());
+            assertFalse(resolver.resolve(file).exists());
+            assertEquals("payload", read(resolver.resolve(moved)));
+            passed++;
+        } finally {
+            deleteTree(root);
+        }
+    }
+
+    private static void rejectsMovingDirectoryIntoItself() throws Exception {
+        File root = Files.createTempDirectory("devxyz-file-loop").toFile();
+        try {
+            WorkspacePathResolver resolver = new WorkspacePathResolver(root, "local-project");
+            ProjectFileService service = new ProjectFileService(resolver, "local-project");
+            ProjectPath projectRoot = ProjectPath.of("local-project", "");
+            ProjectPath parent = service.createDirectory(projectRoot, "parent");
+            ProjectPath child = service.createDirectory(parent, "child");
+            expectFailure(new ThrowingRunnable() {
+                @Override public void run() throws Exception { service.moveTo(parent, child, "parent"); }
+            });
+            expectFailure(new ThrowingRunnable() {
+                @Override public void run() throws Exception { service.copyTo(parent, child); }
+            });
+            passed++;
+        } finally {
+            deleteTree(root);
+        }
+    }
+
     private static void rejectsRootMutationAndInvalidNames() throws Exception {
         File root = Files.createTempDirectory("devxyz-file-guard").toFile();
         try {
@@ -92,11 +140,8 @@ public final class ProjectFileServiceHostTest {
 
     private static void write(File file, String value) throws IOException {
         FileOutputStream out = new FileOutputStream(file);
-        try {
-            out.write(value.getBytes(StandardCharsets.UTF_8));
-        } finally {
-            out.close();
-        }
+        try { out.write(value.getBytes(StandardCharsets.UTF_8)); }
+        finally { out.close(); }
     }
 
     private static String read(File file) throws IOException {
@@ -105,22 +150,16 @@ public final class ProjectFileServiceHostTest {
 
     private static void expectFailure(ThrowingRunnable action) throws Exception {
         boolean failed = false;
-        try {
-            action.run();
-        } catch (IllegalArgumentException expected) {
-            failed = true;
-        } catch (IOException expected) {
-            failed = true;
-        }
+        try { action.run(); }
+        catch (IllegalArgumentException expected) { failed = true; }
+        catch (IOException expected) { failed = true; }
         if (!failed) throw new AssertionError("Expected operation to fail");
     }
 
     private static void deleteTree(File file) {
         if (file == null || !file.exists()) return;
         File[] children = file.listFiles();
-        if (children != null) {
-            for (File child : children) deleteTree(child);
-        }
+        if (children != null) for (File child : children) deleteTree(child);
         file.delete();
     }
 

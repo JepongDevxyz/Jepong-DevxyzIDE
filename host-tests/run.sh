@@ -18,6 +18,7 @@ javac -d "$OUT" \
   "$ROOT/host-tests/EditorSessionHostTest.java" \
   "$ROOT/host-tests/EditorSettingsHostTest.java" \
   "$ROOT/host-tests/AppAppearanceSettingsHostTest.java" \
+  "$ROOT/host-tests/EditorUndoHistoryHostTest.java" \
   "$ROOT/host-tests/TextSearchServiceHostTest.java" \
   "$ROOT/host-tests/ProjectSearchServiceHostTest.java" \
   "$ROOT/host-tests/BuildDiagnosticsParserHostTest.java" \
@@ -47,6 +48,7 @@ java -cp "$OUT" ProjectArchiveServiceHostTest
 java -cp "$OUT" EditorSessionHostTest
 java -cp "$OUT" EditorSettingsHostTest
 java -cp "$OUT" AppAppearanceSettingsHostTest
+java -cp "$OUT" EditorUndoHistoryHostTest
 java -cp "$OUT" TextSearchServiceHostTest
 java -cp "$OUT" ProjectSearchServiceHostTest
 java -cp "$OUT" BuildDiagnosticsParserHostTest

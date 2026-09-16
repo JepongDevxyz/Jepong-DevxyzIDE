@@ -66,6 +66,7 @@ java -cp "$OUT" BasicCompletionServiceHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
 python3 "$ROOT/host-tests/editor_syntax_contract_test.py"
 python3 "$ROOT/host-tests/editor_actions_contract_test.py"
+python3 "$ROOT/host-tests/editor_gutter_contract_test.py"
 python3 "$ROOT/host-tests/developer_tools_contract_test.py"
 python3 "$ROOT/host-tests/terminal_log_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"

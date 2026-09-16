@@ -1,5 +1,7 @@
 package com.jepongdevxyz.idebuild;
 
+import com.jepongdevxyz.idebuild.core.build.BuildArtifact;
+import com.jepongdevxyz.idebuild.core.build.BuildOutputScanner;
 import com.jepongdevxyz.idebuild.core.build.BuildPlan;
 import com.jepongdevxyz.idebuild.core.build.BuildPlanner;
 import com.jepongdevxyz.idebuild.core.build.BuildTaskPolicy;
@@ -18,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 public final class BuildRunner {
+    private static final int MAX_ARTIFACT_SCAN_FILES = 50000;
+
     public interface Listener {
         void onLine(String line);
         void onFinished(int exitCode, File apk);
@@ -155,6 +159,7 @@ public final class BuildRunner {
                     int exit = result.isCancelled() ? 130 : result.getExitCode();
                     File apk = null;
                     if (exit == 0) {
+                        reportBuildArtifacts(projectRoot, listener);
                         String expectedVariant = BuildTaskPolicy.expectedApkVariant(task);
                         if (expectedVariant != null) {
                             apk = ApkLocator.findApk(projectRoot, expectedVariant);
@@ -176,6 +181,22 @@ public final class BuildRunner {
         } catch (Exception e) {
             listener.onLine("BUILD ERROR: " + e.getClass().getSimpleName() + ": " + safeMessage(e));
             finish(handle, listener, handle.cancelled ? 130 : 1, null);
+        }
+    }
+
+    private static void reportBuildArtifacts(File projectRoot, Listener listener) {
+        try {
+            List<BuildArtifact> artifacts = BuildOutputScanner.scan(projectRoot, MAX_ARTIFACT_SCAN_FILES);
+            listener.onLine("Build artifacts (" + artifacts.size() + "):");
+            if (artifacts.isEmpty()) {
+                listener.onLine("  - none detected under build/outputs");
+                return;
+            }
+            for (BuildArtifact artifact : artifacts) {
+                listener.onLine("  - " + artifact.describe());
+            }
+        } catch (Exception scanError) {
+            listener.onLine("BUILD OUTPUT WARNING: artifact scan failed: " + safeMessage(scanError));
         }
     }
 

@@ -41,9 +41,7 @@ public final class EditorSyntaxStyler {
         int half = MAX_SYNTAX_CHARS / 2;
         int start = Math.max(0, cursor - half);
         int end = Math.min(length, start + MAX_SYNTAX_CHARS);
-        if (end - start < MAX_SYNTAX_CHARS && end == length) {
-            start = Math.max(0, end - MAX_SYNTAX_CHARS);
-        }
+        if (end - start < MAX_SYNTAX_CHARS && end == length) start = Math.max(0, end - MAX_SYNTAX_CHARS);
 
         removeOwnedSpans(editable, start, end);
 
@@ -81,26 +79,7 @@ public final class EditorSyntaxStyler {
             SyntaxLanguage detected = SyntaxLanguageService.detect(sourceHint);
             if (detected != SyntaxLanguage.PLAIN_TEXT) return detected;
         }
-
-        String sample = text == null ? "" : text.trim();
-        if (sample.startsWith("<")) return SyntaxLanguage.XML;
-        if (sample.startsWith("{") || sample.startsWith("[")) return SyntaxLanguage.JSON;
-        if (containsAny(sample, "fun ", " val ", " var ", "data class ", "object ")) return SyntaxLanguage.KOTLIN;
-        if (containsAny(sample, "plugins {", "android {", "dependencies {")) return SyntaxLanguage.GRADLE;
-        if (containsAny(sample, "function ", "const ", "let ", "=>")) return SyntaxLanguage.JAVASCRIPT;
-        return SyntaxLanguage.JAVA;
-    }
-
-    private static boolean containsAny(String text, String a, String b, String c, String d, String e) {
-        return text.indexOf(a) >= 0 || text.indexOf(b) >= 0 || text.indexOf(c) >= 0 || text.indexOf(d) >= 0 || text.indexOf(e) >= 0;
-    }
-
-    private static boolean containsAny(String text, String a, String b, String c) {
-        return text.indexOf(a) >= 0 || text.indexOf(b) >= 0 || text.indexOf(c) >= 0;
-    }
-
-    private static boolean containsAny(String text, String a, String b, String c, String d) {
-        return text.indexOf(a) >= 0 || text.indexOf(b) >= 0 || text.indexOf(c) >= 0 || text.indexOf(d) >= 0;
+        return SyntaxLanguageService.detectFromContent(text);
     }
 
     private static int colorFor(String kind) {

@@ -14,7 +14,10 @@ public final class ProjectTemplateGenerator {
     public enum Template {
         CLASSIC_JAVA,
         MODERN_ANDROIDX_JAVA,
-        MODERN_ANDROIDX_KOTLIN
+        MODERN_ANDROIDX_KOTLIN,
+        NO_ACTIVITY_JAVA,
+        WEBVIEW_JAVA,
+        LIBRARY_JAVA
     }
 
     private ProjectTemplateGenerator() { }
@@ -34,7 +37,11 @@ public final class ProjectTemplateGenerator {
             createCommonDirectories(root, cleanPackage);
             if (template == Template.CLASSIC_JAVA) writeClassic(root, cleanName, cleanPackage);
             else if (template == Template.MODERN_ANDROIDX_JAVA) writeModern(root, cleanName, cleanPackage);
-            else writeModernKotlin(root, cleanName, cleanPackage);
+            else if (template == Template.MODERN_ANDROIDX_KOTLIN) writeModernKotlin(root, cleanName, cleanPackage);
+            else if (template == Template.NO_ACTIVITY_JAVA) writeNoActivity(root, cleanName, cleanPackage);
+            else if (template == Template.WEBVIEW_JAVA) writeWebView(root, cleanName, cleanPackage);
+            else if (template == Template.LIBRARY_JAVA) writeLibrary(root, cleanName, cleanPackage);
+            else throw new IllegalArgumentException("Unsupported project template: " + template);
             write(new File(root, ".gitignore"), ".gradle/\nlocal.properties\n**/build/\n*.iml\n");
             return root.getCanonicalFile();
         } catch (IOException failure) {
@@ -101,14 +108,7 @@ public final class ProjectTemplateGenerator {
     private static void writeModern(File root, String projectName, String applicationId) throws IOException {
         writeModernSettings(root, projectName, false);
         writeModernProperties(root);
-        write(new File(root, "app/build.gradle"),
-                "plugins {\n" +
-                "    id 'com.android.application'\n" +
-                "}\n\n" +
-                modernAndroidBlock(applicationId) +
-                "\ndependencies {\n" +
-                "    implementation 'androidx.appcompat:appcompat:1.7.0'\n" +
-                "}\n");
+        writeModernApplicationGradle(root, applicationId, false);
         writeManifest(root, applicationId, true);
         writeActivity(root, applicationId, true);
         writeLayout(root, projectName);
@@ -122,18 +122,7 @@ public final class ProjectTemplateGenerator {
     private static void writeModernKotlin(File root, String projectName, String applicationId) throws IOException {
         writeModernSettings(root, projectName, true);
         writeModernProperties(root);
-        write(new File(root, "app/build.gradle"),
-                "plugins {\n" +
-                "    id 'com.android.application'\n" +
-                "    id 'org.jetbrains.kotlin.android'\n" +
-                "}\n\n" +
-                modernAndroidBlock(applicationId) +
-                "\nkotlinOptions {\n" +
-                "    jvmTarget = '17'\n" +
-                "}\n\n" +
-                "dependencies {\n" +
-                "    implementation 'androidx.appcompat:appcompat:1.7.0'\n" +
-                "}\n");
+        writeModernApplicationGradle(root, applicationId, true);
         writeManifest(root, applicationId, true);
         writeKotlinActivity(root, applicationId);
         writeLayout(root, projectName);
@@ -142,6 +131,71 @@ public final class ProjectTemplateGenerator {
                 "DevxyzIDE Modern AndroidX Kotlin template\n" +
                 "Pinned profile: Kotlin 2.0.21 + AGP 8.7.3 + Gradle 8.9 + JDK 17 + Android SDK 35.\n" +
                 "On-device builds require the matching DevxyzIDE runtime/toolchain components.\n");
+    }
+
+    private static void writeNoActivity(File root, String projectName, String applicationId) throws IOException {
+        writeModernSettings(root, projectName, false);
+        writeModernProperties(root);
+        writeModernApplicationGradle(root, applicationId, false);
+        writeNoActivityManifest(root);
+        writeValues(root, projectName, true);
+        write(new File(root, "DEVXYZ_TEMPLATE.txt"),
+                "DevxyzIDE No Activity Java template\n" +
+                "Application module only; add activities/services/components when needed.\n" +
+                "Pinned profile: AGP 8.7.3 + Gradle 8.9 + JDK 17 + Android SDK 35.\n");
+    }
+
+    private static void writeWebView(File root, String projectName, String applicationId) throws IOException {
+        writeModernSettings(root, projectName, false);
+        writeModernProperties(root);
+        writeModernApplicationGradle(root, applicationId, false);
+        writeWebViewManifest(root);
+        writeWebViewActivity(root, applicationId);
+        writeWebViewLayout(root);
+        writeValues(root, projectName, true);
+        write(new File(root, "DEVXYZ_TEMPLATE.txt"),
+                "DevxyzIDE WebView Java template\n" +
+                "JavaScript is disabled by default. Review remote content and WebView security before enabling it.\n" +
+                "Pinned profile: AGP 8.7.3 + Gradle 8.9 + JDK 17 + Android SDK 35.\n");
+    }
+
+    private static void writeLibrary(File root, String projectName, String applicationId) throws IOException {
+        writeModernLibrarySettings(root, projectName);
+        writeModernProperties(root);
+        write(new File(root, "app/build.gradle"),
+                "plugins {\n" +
+                "    id 'com.android.library'\n" +
+                "}\n\n" +
+                modernLibraryAndroidBlock(applicationId) +
+                "\ndependencies {\n" +
+                "}\n");
+        writeLibraryManifest(root);
+        write(new File(root, "app/src/main/java/" + applicationId.replace('.', '/') + "/LibraryApi.java"),
+                "package " + applicationId + ";\n\n" +
+                "/** Public entry point for this Android library module. */\n" +
+                "public final class LibraryApi {\n" +
+                "    private LibraryApi() { }\n\n" +
+                "    public static String name() {\n" +
+                "        return \"" + escapeJava(projectName) + "\";\n" +
+                "    }\n" +
+                "}\n");
+        write(new File(root, "DEVXYZ_TEMPLATE.txt"),
+                "DevxyzIDE Android Library Java template\n" +
+                "Produces an Android AAR library module rather than an installable application APK.\n" +
+                "Pinned profile: AGP 8.7.3 + Gradle 8.9 + JDK 17 + Android SDK 35.\n");
+    }
+
+    private static void writeModernApplicationGradle(File root, String applicationId, boolean kotlin) throws IOException {
+        write(new File(root, "app/build.gradle"),
+                "plugins {\n" +
+                "    id 'com.android.application'\n" +
+                (kotlin ? "    id 'org.jetbrains.kotlin.android'\n" : "") +
+                "}\n\n" +
+                modernAndroidBlock(applicationId) +
+                (kotlin ? "\nkotlinOptions {\n    jvmTarget = '17'\n}\n" : "") +
+                "\ndependencies {\n" +
+                "    implementation 'androidx.appcompat:appcompat:1.7.0'\n" +
+                "}\n");
     }
 
     private static void writeModernSettings(File root, String projectName, boolean kotlin) throws IOException {
@@ -161,6 +215,23 @@ public final class ProjectTemplateGenerator {
                 (kotlin ? "    id 'org.jetbrains.kotlin.android' version '2.0.21' apply false\n" : "") +
                 "}\n";
         write(new File(root, "build.gradle"), plugins);
+    }
+
+    private static void writeModernLibrarySettings(File root, String projectName) throws IOException {
+        write(new File(root, "settings.gradle"),
+                "pluginManagement {\n" +
+                "    repositories { google(); mavenCentral(); gradlePluginPortal() }\n" +
+                "}\n" +
+                "dependencyResolutionManagement {\n" +
+                "    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n" +
+                "    repositories { google(); mavenCentral() }\n" +
+                "}\n" +
+                "rootProject.name = '" + escapeGroovy(projectName) + "'\n" +
+                "include ':app'\n");
+        write(new File(root, "build.gradle"),
+                "plugins {\n" +
+                "    id 'com.android.library' version '8.7.3' apply false\n" +
+                "}\n");
     }
 
     private static void writeModernProperties(File root) throws IOException {
@@ -188,6 +259,20 @@ public final class ProjectTemplateGenerator {
                 "}\n";
     }
 
+    private static String modernLibraryAndroidBlock(String applicationId) {
+        return "android {\n" +
+                "    namespace '" + applicationId + "'\n" +
+                "    compileSdk 35\n\n" +
+                "    defaultConfig {\n" +
+                "        minSdk 21\n" +
+                "    }\n\n" +
+                "    compileOptions {\n" +
+                "        sourceCompatibility JavaVersion.VERSION_17\n" +
+                "        targetCompatibility JavaVersion.VERSION_17\n" +
+                "    }\n" +
+                "}\n";
+    }
+
     private static void writeManifest(File root, String applicationId, boolean modern) throws IOException {
         String theme = modern ? "@style/AppTheme" : "@android:style/Theme.Material.Light.NoActionBar";
         String manifestStart = modern
@@ -207,6 +292,36 @@ public final class ProjectTemplateGenerator {
                 "</manifest>\n");
     }
 
+    private static void writeNoActivityManifest(File root) throws IOException {
+        write(new File(root, "app/src/main/AndroidManifest.xml"),
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n" +
+                "    <application android:allowBackup=\"true\" android:label=\"@string/app_name\" />\n" +
+                "</manifest>\n");
+    }
+
+    private static void writeWebViewManifest(File root) throws IOException {
+        write(new File(root, "app/src/main/AndroidManifest.xml"),
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n" +
+                "    <uses-permission android:name=\"android.permission.INTERNET\" />\n" +
+                "    <application android:allowBackup=\"true\" android:label=\"@string/app_name\" android:theme=\"@style/AppTheme\">\n" +
+                "        <activity android:name=\".MainActivity\" android:exported=\"true\">\n" +
+                "            <intent-filter>\n" +
+                "                <action android:name=\"android.intent.action.MAIN\" />\n" +
+                "                <category android:name=\"android.intent.category.LAUNCHER\" />\n" +
+                "            </intent-filter>\n" +
+                "        </activity>\n" +
+                "    </application>\n" +
+                "</manifest>\n");
+    }
+
+    private static void writeLibraryManifest(File root) throws IOException {
+        write(new File(root, "app/src/main/AndroidManifest.xml"),
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" />\n");
+    }
+
     private static void writeActivity(File root, String applicationId, boolean modern) throws IOException {
         String baseImport = modern ? "import androidx.appcompat.app.AppCompatActivity;\n" : "import android.app.Activity;\n";
         String baseClass = modern ? "AppCompatActivity" : "Activity";
@@ -218,6 +333,25 @@ public final class ProjectTemplateGenerator {
                 "    @Override protected void onCreate(Bundle savedInstanceState) {\n" +
                 "        super.onCreate(savedInstanceState);\n" +
                 "        setContentView(R.layout.activity_main);\n" +
+                "    }\n" +
+                "}\n");
+    }
+
+    private static void writeWebViewActivity(File root, String applicationId) throws IOException {
+        write(new File(root, "app/src/main/java/" + applicationId.replace('.', '/') + "/MainActivity.java"),
+                "package " + applicationId + ";\n\n" +
+                "import android.os.Bundle;\n" +
+                "import android.webkit.WebView;\n" +
+                "import android.webkit.WebViewClient;\n" +
+                "import androidx.appcompat.app.AppCompatActivity;\n\n" +
+                "public class MainActivity extends AppCompatActivity {\n" +
+                "    @Override protected void onCreate(Bundle savedInstanceState) {\n" +
+                "        super.onCreate(savedInstanceState);\n" +
+                "        setContentView(R.layout.activity_main);\n" +
+                "        WebView webView = (WebView) findViewById(R.id.webView);\n" +
+                "        webView.getSettings().setJavaScriptEnabled(false);\n" +
+                "        webView.setWebViewClient(new WebViewClient());\n" +
+                "        webView.loadUrl(\"https://example.com\");\n" +
                 "    }\n" +
                 "}\n");
     }
@@ -250,6 +384,15 @@ public final class ProjectTemplateGenerator {
                 "        android:text=\"@string/hello_text\"\n" +
                 "        android:textSize=\"22sp\" />\n" +
                 "</LinearLayout>\n");
+    }
+
+    private static void writeWebViewLayout(File root) throws IOException {
+        write(new File(root, "app/src/main/res/layout/activity_main.xml"),
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<WebView xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+                "    android:id=\"@+id/webView\"\n" +
+                "    android:layout_width=\"match_parent\"\n" +
+                "    android:layout_height=\"match_parent\" />\n");
     }
 
     private static void writeValues(File root, String projectName, boolean modern) throws IOException {
@@ -302,6 +445,10 @@ public final class ProjectTemplateGenerator {
 
     private static String escapeGroovy(String value) {
         return value.replace("\\", "\\\\").replace("'", "\\'");
+    }
+
+    private static String escapeJava(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private static String escapeXml(String value) {

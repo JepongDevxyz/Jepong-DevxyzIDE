@@ -2,6 +2,7 @@ package com.jepongdevxyz.idebuild;
 
 import com.jepongdevxyz.idebuild.core.build.BuildPlan;
 import com.jepongdevxyz.idebuild.core.build.BuildPlanner;
+import com.jepongdevxyz.idebuild.core.build.BuildTaskPolicy;
 import com.jepongdevxyz.idebuild.core.build.ProjectAnalyzer;
 import com.jepongdevxyz.idebuild.core.build.ProjectRequirements;
 import com.jepongdevxyz.idebuild.core.process.ProcessEngine;
@@ -62,7 +63,7 @@ public final class BuildRunner {
 
     private static void prepareAndStart(final File projectRoot,
                                         final File appFilesDir,
-                                        String task,
+                                        final String task,
                                         final boolean offline,
                                         final Listener listener,
                                         final BuildHandle handle) {
@@ -142,10 +143,17 @@ public final class BuildRunner {
                     int exit = result.isCancelled() ? 130 : result.getExitCode();
                     File apk = null;
                     if (exit == 0) {
-                        apk = ApkLocator.findDebugApk(projectRoot);
-                        if (apk == null) {
-                            listener.onLine("BUILD OUTPUT ERROR: Gradle exited successfully but no structurally valid debug APK was found.");
-                            exit = 4;
+                        String expectedVariant = BuildTaskPolicy.expectedApkVariant(task);
+                        if (expectedVariant != null) {
+                            apk = ApkLocator.findApk(projectRoot, expectedVariant);
+                            if (apk == null) {
+                                listener.onLine("BUILD OUTPUT ERROR: Gradle exited successfully but no structurally valid " + expectedVariant + " APK was found.");
+                                exit = 4;
+                            } else {
+                                listener.onLine("Verified APK output: " + apk.getAbsolutePath());
+                            }
+                        } else {
+                            listener.onLine("Gradle task completed successfully; this task does not require an APK output.");
                         }
                     }
                     finish(handle, listener, exit, apk);

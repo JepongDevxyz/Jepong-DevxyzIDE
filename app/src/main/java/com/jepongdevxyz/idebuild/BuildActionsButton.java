@@ -10,6 +10,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.jepongdevxyz.idebuild.core.capability.Capability;
+import com.jepongdevxyz.idebuild.core.capability.CapabilityRegistry;
+
 import java.io.File;
 
 /**
@@ -51,6 +54,16 @@ public final class BuildActionsButton extends Button {
                     .setMessage("Load a Gradle project before running build actions.")
                     .setPositiveButton("OK", null)
                     .show();
+            return;
+        }
+        Capability capability = CapabilityRegistry.gradleBuild(project, getContext().getFilesDir());
+        if (!capability.isEnabled()) {
+            new AlertDialog.Builder(getContext())
+                    .setTitle(capability.getLabel() + ": " + capability.getStatus().name())
+                    .setMessage(capability.getUserMessage())
+                    .setPositiveButton("OK", null)
+                    .show();
+            appendConsole("BUILD " + capability.getStatus().name() + ": " + capability.getUserMessage());
             return;
         }
 

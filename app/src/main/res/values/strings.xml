@@ -7,6 +7,7 @@
     <string name="toolchains">Toolchains</string>
     <string name="runtime_bootstrap">Runtime</string>
     <string name="terminal">Terminal</string>
+    <string name="git">Git</string>
     <string name="new_file">New File</string>
     <string name="new_folder">New Folder</string>
     <string name="search">Search</string>

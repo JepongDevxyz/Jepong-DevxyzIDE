@@ -17,14 +17,15 @@ signing_activity_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/ApkSig
 # AIDE Test Edition intentionally uses only platform Android widgets/classes.
 assert "dependencies {\n}" in build, "AIDE edition must not require external Maven UI/editor dependencies"
 assert "sourceCompatibility JavaVersion.VERSION_1_7" in build
-assert "compileSdkVersion 28" in build
+assert "compileSdkVersion 29" in build
 assert "com.android.tools.build:gradle:3.2.1" in root_build
 assert "com.jepongdevxyz.idebuild.SyntaxEditText" in layout and "io.github.rosemoe" not in layout
 assert "EditText editor" in main and "io.github.rosemoe" not in main
 assert "androidx." not in main
 assert main.count('protected void onDestroy()') == 1
 assert "applicationId 'com.jepongdevxyz.idebuild'" in build
-assert ("targetSdk 28" in build or "targetSdkVersion 28" in build)
+assert ("minSdk 19" in build or "minSdkVersion 19" in build)
+assert ("targetSdk 29" in build or "targetSdkVersion 29" in build)
 assert '.ApkFileProvider' in manifest and 'androidx.core.content.FileProvider' not in manifest
 assert script.is_file(), "Devxyz runtime builder missing"
 text = script.read_text()

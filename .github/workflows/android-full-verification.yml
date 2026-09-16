@@ -431,3 +431,54 @@ jobs:
             sleep 3
             adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.devxyzsamplekotlin"
             adb shell am force-stop com.jepongdevxyz.devxyzsamplekotlin
+
+  package-source:
+    name: Package verified source ZIP
+    needs: [build, templates, emulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout exact verified commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Verify release documentation exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s README.md
+          test -s docs/CAPABILITY_MATRIX.md
+          test -s docs/LIMITATIONS.md
+          test -s docs/VERIFICATION_REPORT.md
+
+      - name: Build exact Git source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive \
+            --format=zip \
+            --prefix=DevxyzIDE-verified-source/ \
+            --output=DevxyzIDE-verified-source.zip \
+            HEAD
+          test -s DevxyzIDE-verified-source.zip
+          unzip -t DevxyzIDE-verified-source.zip
+          sha256sum DevxyzIDE-verified-source.zip | tee DevxyzIDE-verified-source.zip.sha256
+          printf 'commit=%s\nworkflow_run=%s\n' "${GITHUB_SHA}" "${GITHUB_RUN_ID}" > DevxyzIDE-verification-manifest.txt
+
+      - name: Upload final verified source
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevxyzIDE-verified-source
+          path: |
+            DevxyzIDE-verified-source.zip
+            DevxyzIDE-verified-source.zip.sha256
+            DevxyzIDE-verification-manifest.txt
+            README.md
+            docs/CAPABILITY_MATRIX.md
+            docs/LIMITATIONS.md
+            docs/VERIFICATION_REPORT.md
+          if-no-files-found: error
+          retention-days: 30

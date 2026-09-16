@@ -58,6 +58,7 @@ public final class ProjectTemplateGeneratorHostTest {
             assertContains(rootGradle, "com.android.application");
             assertContains(appGradle, "namespace 'com.example.modernapp'");
             assertContains(appGradle, "compileSdk 35");
+            assertContains(appGradle, "platform('org.jetbrains.kotlin:kotlin-bom:2.0.21')");
             assertContains(appGradle, "androidx.appcompat:appcompat");
             assertContains(activity, "androidx.appcompat.app.AppCompatActivity");
             assertNotContains(manifest, "package=\"");
@@ -81,6 +82,7 @@ public final class ProjectTemplateGeneratorHostTest {
             assertContains(rootGradle, "org.jetbrains.kotlin.android");
             assertContains(rootGradle, "2.0.21");
             assertContains(appGradle, "id 'org.jetbrains.kotlin.android'");
+            assertContains(appGradle, "platform('org.jetbrains.kotlin:kotlin-bom:2.0.21')");
             assertContains(appGradle, "namespace 'com.example.kotlinapp'");
             assertContains(appGradle, "compileSdk 35");
             assertContains(activity, "class MainActivity : AppCompatActivity()");

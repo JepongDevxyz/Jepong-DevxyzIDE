@@ -20,6 +20,11 @@
             android:grantUriPermissions="true" />
 
         <activity
+            android:name=".ToolchainManagerActivity"
+            android:screenOrientation="unspecified"
+            android:exported="false" />
+
+        <activity
             android:name=".DeveloperToolsActivity"
             android:screenOrientation="unspecified"
             android:exported="false" />

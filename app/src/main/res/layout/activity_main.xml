@@ -53,6 +53,7 @@
             <Button android:id="@+id/newFileButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/new_file" />
             <Button android:id="@+id/newFolderButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/new_folder" />
             <Button android:id="@+id/searchButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/search" />
+            <com.jepongdevxyz.idebuild.CompletionButton android:id="@+id/completionButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/complete" />
             <Button android:id="@+id/projectSearchButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/find_project" />
             <Button android:id="@+id/saveAllButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/save_all" />
             <Button android:id="@+id/saveButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/save" />

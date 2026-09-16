@@ -16,35 +16,29 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
       - name: Set up JDK 17 for Android SDK
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-
       - name: Install build SDK
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3"
-
       - name: Set up JDK 8 for legacy Gradle
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '8'
-
       - name: Set up Gradle 4.6
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '4.6'
-
       - name: Build APK and verify API 19 metadata
         shell: bash
         run: |
@@ -58,7 +52,6 @@ jobs:
           grep -F "sdkVersion:'19'" api19-apk-badging.txt
           grep -F "targetSdkVersion:'29'" api19-apk-badging.txt
           grep -F "launchable-activity: name='com.jepongdevxyz.idebuild.SplashActivity'" api19-apk-badging.txt
-
       - name: Upload API 19 compatibility evidence
         uses: actions/upload-artifact@v4
         with:
@@ -76,35 +69,29 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
       - name: Set up JDK 17 for Android SDK
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-
       - name: Install build SDK
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3"
-
       - name: Set up JDK 8 for legacy Gradle
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '8'
-
       - name: Set up Gradle 4.6
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '4.6'
-
       - name: Build and sign exact user-delivery APK
         shell: bash
         run: |
@@ -114,14 +101,8 @@ jobs:
           SIGNED_APK="app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk"
           KEYSTORE="${RUNNER_TEMP}/devxyz-device-install.jks"
           export DEVXYZ_CI_KS_PASS="$(openssl rand -hex 16)"
-          keytool -genkeypair -keystore "$KEYSTORE" \
-            -storepass:env DEVXYZ_CI_KS_PASS -keypass:env DEVXYZ_CI_KS_PASS \
-            -alias devxyz-device -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=DevxyzIDE Device Verification,O=Jepong Devxyz,C=PH"
-          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" sign \
-            --ks "$KEYSTORE" --ks-key-alias devxyz-device \
-            --ks-pass env:DEVXYZ_CI_KS_PASS --key-pass env:DEVXYZ_CI_KS_PASS \
-            --out "$SIGNED_APK" "$RAW"
+          keytool -genkeypair -keystore "$KEYSTORE" -storepass:env DEVXYZ_CI_KS_PASS -keypass:env DEVXYZ_CI_KS_PASS -alias devxyz-device -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=DevxyzIDE Device Verification,O=Jepong Devxyz,C=PH"
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" sign --ks "$KEYSTORE" --ks-key-alias devxyz-device --ks-pass env:DEVXYZ_CI_KS_PASS --key-pass env:DEVXYZ_CI_KS_PASS --out "$SIGNED_APK" "$RAW"
           "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" verify --verbose --print-certs "$SIGNED_APK"
           "${ANDROID_SDK_ROOT}/build-tools/29.0.3/aapt" dump badging "$SIGNED_APK" | tee device-apk-badging.txt
           grep -F "package: name='com.jepongdevxyz.idebuild' versionCode='7' versionName='0.6.1-device-install'" device-apk-badging.txt
@@ -131,17 +112,25 @@ jobs:
           unzip -t "$SIGNED_APK"
           rm -f "$KEYSTORE"
           unset DEVXYZ_CI_KS_PASS
-
+      - name: Preserve signed APK before runtime gate
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevxyzIDE-v0.6.1-signed-candidate
+          path: |
+            app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
+            device-apk-badging.txt
+          if-no-files-found: error
+          retention-days: 15
       - name: Install exact signed APK on Android 11 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
           arch: x86_64
-          target: google_apis
+          target: default
           profile: pixel_2
           emulator-boot-timeout: 900
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-metrics
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -euo pipefail
             SIGNED_APK="app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk"
@@ -149,7 +138,7 @@ jobs:
             ACTIVITY="com.jepongdevxyz.idebuild.SplashActivity"
             test -s "$SIGNED_APK"
             adb wait-for-device
-            adb shell getprop ro.build.version.sdk | tee android11-device-sdk.txt
+            adb shell getprop ro.build.version.sdk | tr -d '\r' | tee android11-device-sdk.txt
             grep -Fx "30" android11-device-sdk.txt
             adb uninstall "$PACKAGE" >/dev/null 2>&1 || true
             adb install "$SIGNED_APK" | tee android11-install.txt
@@ -162,7 +151,6 @@ jobs:
             PID="$(adb shell pidof "$PACKAGE" | tr -d '\r' || true)"
             test -n "$PID"
             printf '%s\n' "$PID" | tee android11-pid.txt
-
       - name: Upload Android 11 diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -178,7 +166,6 @@ jobs:
             android11-pid.txt
           if-no-files-found: warn
           retention-days: 15
-
       - name: Upload exact verified APK
         if: success()
         uses: actions/upload-artifact@v4

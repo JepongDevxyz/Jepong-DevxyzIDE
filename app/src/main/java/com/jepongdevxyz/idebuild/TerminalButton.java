@@ -14,6 +14,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.jepongdevxyz.idebuild.core.log.BoundedLogBuffer;
 import com.jepongdevxyz.idebuild.core.process.ProcessEngine;
 import com.jepongdevxyz.idebuild.core.process.ProcessRequest;
 import com.jepongdevxyz.idebuild.core.process.ProcessResult;
@@ -29,6 +30,7 @@ import java.io.File;
  */
 public final class TerminalButton extends Button {
     private static final int MAX_OUTPUT_CHARS = 200000;
+    private static final int MAX_OUTPUT_LINES = 5000;
 
     private File workingDirectory;
     private ProcessEngine.RunningProcess runningProcess;
@@ -116,6 +118,7 @@ public final class TerminalButton extends Button {
 
         final ScrollView scroll = new ScrollView(getContext());
         final TextView output = new TextView(getContext());
+        final BoundedLogBuffer log = new BoundedLogBuffer(MAX_OUTPUT_CHARS, MAX_OUTPUT_LINES);
         output.setTypeface(Typeface.MONOSPACE);
         output.setTextSize(12f);
         output.setTextIsSelectable(true);
@@ -165,10 +168,10 @@ public final class TerminalButton extends Button {
                 String command = commandInput.getText() == null ? "" : commandInput.getText().toString();
                 if (command.trim().length() == 0) return;
                 if (runningProcess != null && !runningProcess.isFinished()) {
-                    appendOutput(output, scroll, "[a command is already running]");
+                    appendOutput(log, output, scroll, "[a command is already running]");
                     return;
                 }
-                executeCommand(command, output, scroll, run, stop, commandInput);
+                executeCommand(command, log, output, scroll, run, stop, commandInput);
             }
         });
 
@@ -180,7 +183,10 @@ public final class TerminalButton extends Button {
         });
 
         clear.setOnClickListener(new OnClickListener() {
-            @Override public void onClick(View view) { output.setText(""); }
+            @Override public void onClick(View view) {
+                log.clear();
+                output.setText("");
+            }
         });
 
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
@@ -193,6 +199,7 @@ public final class TerminalButton extends Button {
     }
 
     private void executeCommand(final String command,
+                                final BoundedLogBuffer log,
                                 final TextView output,
                                 final ScrollView scroll,
                                 final Button run,
@@ -203,22 +210,22 @@ public final class TerminalButton extends Button {
             File cwd = resolveWorkingDirectory();
             request = TerminalCommandPlanner.plan(getContext().getFilesDir(), cwd, command);
         } catch (Exception error) {
-            appendOutput(output, scroll, "TERMINAL ERROR: " + safeMessage(error));
+            appendOutput(log, output, scroll, "TERMINAL ERROR: " + safeMessage(error));
             return;
         }
 
-        appendOutput(output, scroll, "$ " + command);
+        appendOutput(log, output, scroll, "$ " + command);
         run.setEnabled(false);
         stop.setEnabled(true);
         commandInput.setEnabled(false);
 
         runningProcess = ProcessEngine.start(request, new ProcessEngine.Listener() {
             @Override public void onStdout(String line) {
-                appendOutput(output, scroll, line);
+                appendOutput(log, output, scroll, line);
             }
 
             @Override public void onStderr(String line) {
-                appendOutput(output, scroll, line);
+                appendOutput(log, output, scroll, line);
             }
 
             @Override public void onFinished(final ProcessResult result) {
@@ -227,7 +234,7 @@ public final class TerminalButton extends Button {
                         String status = result.isCancelled()
                                 ? "[cancelled]"
                                 : "[exit " + result.getExitCode() + ", " + result.getDurationMillis() + " ms]";
-                        appendOutput(output, scroll, status);
+                        appendOutput(log, output, scroll, status);
                         runningProcess = null;
                         run.setEnabled(true);
                         stop.setEnabled(false);
@@ -249,12 +256,14 @@ public final class TerminalButton extends Button {
         return "Shell: " + shell + "\nWorking directory: " + directory;
     }
 
-    private static void appendOutput(final TextView output, final ScrollView scroll, final String line) {
+    private static void appendOutput(final BoundedLogBuffer log,
+                                     final TextView output,
+                                     final ScrollView scroll,
+                                     final String line) {
         output.post(new Runnable() {
             @Override public void run() {
-                if (output.length() > MAX_OUTPUT_CHARS) output.setText("[terminal output truncated]\n");
-                if (output.length() > 0) output.append("\n");
-                output.append(line == null ? "" : line);
+                log.appendLine(line == null ? "" : line);
+                output.setText(log.snapshot());
                 scroll.post(new Runnable() {
                     @Override public void run() { scroll.fullScroll(View.FOCUS_DOWN); }
                 });

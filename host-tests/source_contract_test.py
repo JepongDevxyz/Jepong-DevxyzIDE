@@ -10,6 +10,7 @@ manifest = (ROOT/'app/src/main/AndroidManifest.xml').read_text()
 script = ROOT/'runtime-builder/build-devxyz-terminal-runtime.sh'
 settings_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/EditorSettingsButton.java'
 terminal_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/TerminalButton.java'
+git_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/GitButton.java'
 
 # AIDE Test Edition intentionally uses only platform Android widgets/classes.
 assert "dependencies {\n}" in build, "AIDE edition must not require external Maven UI/editor dependencies"
@@ -128,5 +129,17 @@ assert 'resolveWorkingDirectory' in terminal_view, "Terminal UI must resolve the
 assert 'R.id.projectPath' in terminal_view, "Terminal UI must follow the visible loaded project path"
 assert '"settings.gradle"' in terminal_view and '"settings.gradle.kts"' in terminal_view, "Terminal UI must locate the Gradle project root"
 assert 'TerminalCommandPlanner.plan(getContext().getFilesDir(), cwd, command)' in terminal_view, "Terminal commands must execute in the resolved project context"
+
+# Git UI must use the tested real Git service and remain available in both orientations.
+assert '@+id/gitButton' in layout and '@+id/gitButton' in land_layout, "Git action must exist in portrait and landscape"
+assert git_view_path.is_file(), "Git UI must live outside MainActivity"
+git_view = git_view_path.read_text()
+assert 'GitService.status' in git_view, "Git UI status must come from real git"
+assert 'GitService.stage' in git_view, "Git UI must support staging"
+assert 'GitService.commit' in git_view, "Git UI must support commits"
+assert 'GitService.diff' in git_view, "Git UI must expose real diffs"
+assert 'GitService.createBranch' in git_view and 'GitService.checkout' in git_view, "Git UI must support branches"
+assert 'GitService.pull' in git_view and 'GitService.push' in git_view, "Git UI must expose real pull/push"
+assert 'isGitAvailable' in git_view, "Unavailable Git must be detected rather than simulated"
 
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

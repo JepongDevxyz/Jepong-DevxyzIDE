@@ -11,6 +11,8 @@ script = ROOT/'runtime-builder/build-devxyz-terminal-runtime.sh'
 settings_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/EditorSettingsButton.java'
 terminal_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/TerminalButton.java'
 git_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/GitButton.java'
+signing_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/ApkSigningButton.java'
+signing_activity_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/ApkSigningActivity.java'
 
 # AIDE Test Edition intentionally uses only platform Android widgets/classes.
 assert "dependencies {\n}" in build, "AIDE edition must not require external Maven UI/editor dependencies"
@@ -141,5 +143,21 @@ assert 'GitService.diff' in git_view, "Git UI must expose real diffs"
 assert 'GitService.createBranch' in git_view and 'GitService.checkout' in git_view, "Git UI must support branches"
 assert 'GitService.pull' in git_view and 'GitService.push' in git_view, "Git UI must expose real pull/push"
 assert 'isGitAvailable' in git_view, "Unavailable Git must be detected rather than simulated"
+
+# APK signing must use a real app-private apksigner, SAF-selected keystore, and post-sign verification.
+assert '@+id/signApkButton' in layout and '@+id/signApkButton' in land_layout, "APK signing action must exist in portrait and landscape"
+assert signing_view_path.is_file(), "APK signing launcher must live outside MainActivity"
+assert signing_activity_path.is_file(), "APK signing workflow must own its SAF result lifecycle"
+signing_view = signing_view_path.read_text()
+signing_activity = signing_activity_path.read_text()
+assert 'ApkSigningActivity' in signing_view, "Signing button must launch the isolated signing workflow"
+assert 'Intent.ACTION_OPEN_DOCUMENT' in signing_activity, "Keystore selection must use Android SAF"
+assert 'RuntimeLayout.findApksigner' in signing_activity, "Signing must discover a real app-private signer"
+assert 'ApkSignerService.signAndVerify' in signing_activity, "Signing must perform real signing and post-sign verification"
+assert 'getFilesDir()' in signing_activity and 'signing-temp' in signing_activity, "SAF keystore materialization must stay app-private"
+assert 'storePassword' in signing_activity and 'keyPassword' in signing_activity, "Signing UI must collect secrets at action time"
+assert 'SharedPreferences' not in signing_activity, "Signing secrets must never be persisted in preferences"
+assert 'ApkInstaller.install' in signing_activity, "Verified signed output must be installable through Android's installer"
+assert '.ApkSigningActivity' in manifest, "Signing activity must be declared in the manifest"
 
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

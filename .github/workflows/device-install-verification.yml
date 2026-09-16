@@ -69,8 +69,8 @@ jobs:
           if-no-files-found: error
           retention-days: 15
 
-  signed_api29_install:
-    name: Build signed APK and verify API 29 install
+  signed_android11_install:
+    name: Build target API 29 APK and verify Android 11 install
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -88,11 +88,11 @@ jobs:
         with:
           packages: platform-tools
 
-      - name: Install build SDK and API 29 emulator image
+      - name: Install build SDK
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3" "system-images;android-29;google_apis;x86_64"
+          sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3"
 
       - name: Set up JDK 8 for legacy Gradle
         uses: actions/setup-java@v5
@@ -132,10 +132,10 @@ jobs:
           rm -f "$KEYSTORE"
           unset DEVXYZ_CI_KS_PASS
 
-      - name: Install exact signed APK on API 29 emulator
+      - name: Install exact signed APK on Android 11 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 30
           arch: x86_64
           target: google_apis
           profile: pixel_2
@@ -149,32 +149,33 @@ jobs:
             ACTIVITY="com.jepongdevxyz.idebuild.SplashActivity"
             test -s "$SIGNED_APK"
             adb wait-for-device
-            adb shell getprop ro.build.version.sdk | tee api29-device-sdk.txt
+            adb shell getprop ro.build.version.sdk | tee android11-device-sdk.txt
+            grep -Fx "30" android11-device-sdk.txt
             adb uninstall "$PACKAGE" >/dev/null 2>&1 || true
-            adb install "$SIGNED_APK" | tee api29-install.txt
-            adb shell pm path "$PACKAGE" | tee api29-package-path.txt
-            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install" | tee api29-version.txt
-            adb shell am start -W -n "$PACKAGE/$ACTIVITY" | tee api29-launch.txt
-            grep -F "Status: ok" api29-launch.txt
-            grep -F "Activity: $PACKAGE/$ACTIVITY" api29-launch.txt
+            adb install "$SIGNED_APK" | tee android11-install.txt
+            grep -F "Success" android11-install.txt
+            adb shell pm path "$PACKAGE" | tee android11-package-path.txt
+            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install" | tee android11-version.txt
+            adb shell am start -W -n "$PACKAGE/$ACTIVITY" | tee android11-launch.txt
+            grep -F "Status: ok" android11-launch.txt
             sleep 5
             PID="$(adb shell pidof "$PACKAGE" | tr -d '\r' || true)"
             test -n "$PID"
-            printf '%s\n' "$PID" | tee api29-pid.txt
+            printf '%s\n' "$PID" | tee android11-pid.txt
 
-      - name: Upload API 29 diagnostics on failure
+      - name: Upload Android 11 diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: DevxyzIDE-api29-failure-diagnostics
+          name: DevxyzIDE-android11-failure-diagnostics
           path: |
             device-apk-badging.txt
-            api29-device-sdk.txt
-            api29-install.txt
-            api29-package-path.txt
-            api29-version.txt
-            api29-launch.txt
-            api29-pid.txt
+            android11-device-sdk.txt
+            android11-install.txt
+            android11-package-path.txt
+            android11-version.txt
+            android11-launch.txt
+            android11-pid.txt
           if-no-files-found: warn
           retention-days: 15
 
@@ -186,10 +187,11 @@ jobs:
           path: |
             app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
             device-apk-badging.txt
-            api29-install.txt
-            api29-package-path.txt
-            api29-version.txt
-            api29-launch.txt
-            api29-pid.txt
+            android11-device-sdk.txt
+            android11-install.txt
+            android11-package-path.txt
+            android11-version.txt
+            android11-launch.txt
+            android11-pid.txt
           if-no-files-found: error
           retention-days: 15

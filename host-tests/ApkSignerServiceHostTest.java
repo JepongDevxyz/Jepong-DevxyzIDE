@@ -18,11 +18,12 @@ public final class ApkSignerServiceHostTest {
                     "if [ \"$1\" = sign ]; then\n" +
                     "  out=\"\"\n" +
                     "  prev=\"\"\n" +
+                    "  last=\"\"\n" +
                     "  for arg in \"$@\"; do\n" +
                     "    if [ \"$prev\" = --out ]; then out=\"$arg\"; fi\n" +
                     "    prev=\"$arg\"\n" +
+                    "    last=\"$arg\"\n" +
                     "  done\n" +
-                    "  eval last=\\\${$#}\n" +
                     "  cp \"$last\" \"$out\"\n" +
                     "  exit 0\n" +
                     "fi\n" +

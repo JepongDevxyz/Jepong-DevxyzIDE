@@ -122,6 +122,14 @@ jobs:
             device-apk-signing.txt
           if-no-files-found: error
           retention-days: 15
+      - name: Enable KVM access for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -e /dev/kvm
+          sudo chmod 666 /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
       - name: Install exact signed APK on proven API 28 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:

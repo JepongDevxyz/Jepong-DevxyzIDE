@@ -32,6 +32,7 @@
             <Button android:id="@+id/saveAllButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/save_all" />
             <Button android:id="@+id/saveButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/save" />
             <Button android:id="@+id/buildButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/build" />
+            <com.jepongdevxyz.idebuild.BuildActionsButton android:id="@+id/buildActionsButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/build_actions" />
             <Button android:id="@+id/problemsButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/problems" />
             <Button android:id="@+id/installButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/install" />
         </LinearLayout>

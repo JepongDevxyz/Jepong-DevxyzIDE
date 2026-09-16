@@ -25,6 +25,7 @@ javac -d "$OUT" \
   "$ROOT/host-tests/GitServiceHostTest.java" \
   "$ROOT/host-tests/ApkSignerServiceHostTest.java" \
   "$ROOT/host-tests/ApkSignerLocatorHostTest.java" \
+  "$ROOT/host-tests/ResourceIndexServiceHostTest.java" \
   $CORE_SOURCES \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/ApkLocator.java" \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java"
@@ -47,6 +48,7 @@ java -cp "$OUT" TerminalCommandPlannerHostTest
 java -cp "$OUT" GitServiceHostTest
 java -cp "$OUT" ApkSignerServiceHostTest
 java -cp "$OUT" ApkSignerLocatorHostTest
+java -cp "$OUT" ResourceIndexServiceHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
 python3 "$ROOT/host-tests/bootstrap_stamp_test.py"

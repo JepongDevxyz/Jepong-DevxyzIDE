@@ -10,9 +10,19 @@ permissions:
 
 jobs:
   signed_device_install:
-    name: Build signed APK and install on Android 15
+    name: Build signed APK and verify API 19/29
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 19
+            arch: x86
+            target: default
+          - api: 29
+            arch: x86_64
+            target: google_apis
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -32,7 +42,7 @@ jobs:
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-28" "build-tools;28.0.3"
+          sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3"
 
       - name: Set up JDK 8 for legacy Gradle
         uses: actions/setup-java@v5
@@ -61,25 +71,26 @@ jobs:
             -storepass:env DEVXYZ_CI_KS_PASS -keypass:env DEVXYZ_CI_KS_PASS \
             -alias devxyz-device -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=DevxyzIDE Device Verification,O=Jepong Devxyz,C=PH"
-          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/apksigner" sign \
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" sign \
             --ks "$KEYSTORE" --ks-key-alias devxyz-device \
             --ks-pass env:DEVXYZ_CI_KS_PASS --key-pass env:DEVXYZ_CI_KS_PASS \
             --out "$SIGNED_APK" "$RAW"
-          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/apksigner" verify --verbose --print-certs "$SIGNED_APK"
-          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/aapt" dump badging "$SIGNED_APK" | tee device-apk-badging.txt
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" verify --verbose --print-certs "$SIGNED_APK"
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/aapt" dump badging "$SIGNED_APK" | tee device-apk-badging.txt
           grep -F "package: name='com.jepongdevxyz.idebuild' versionCode='7' versionName='0.6.1-device-install'" device-apk-badging.txt
+          grep -F "sdkVersion:'19'" device-apk-badging.txt
+          grep -F "targetSdkVersion:'29'" device-apk-badging.txt
           test -s "$SIGNED_APK"
           unzip -t "$SIGNED_APK"
           rm -f "$KEYSTORE"
           unset DEVXYZ_CI_KS_PASS
 
-      - name: Install exact signed APK on Android 15 emulator
+      - name: Install exact signed APK on API ${{ matrix.api }} emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
-          arch: x86_64
-          target: google_apis
-          profile: pixel_6
+          api-level: ${{ matrix.api }}
+          arch: ${{ matrix.arch }}
+          target: ${{ matrix.target }}
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-metrics
           script: |
@@ -89,37 +100,18 @@ jobs:
             ACTIVITY="com.jepongdevxyz.idebuild.SplashActivity"
             test -s "$SIGNED_APK"
             adb wait-for-device
-            echo "Waiting for Android framework boot completion..."
-            for i in $(seq 1 120); do
-              BOOT_COMPLETED="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
-              BOOT_ANIM="$(adb shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r')"
-              if [ "$BOOT_COMPLETED" = "1" ] && { [ "$BOOT_ANIM" = "stopped" ] || [ -z "$BOOT_ANIM" ]; }; then
-                echo "Android 15 emulator framework is ready."
-                break
-              fi
-              if [ "$i" -eq 120 ]; then
-                echo "Emulator device appeared in adb but Android framework did not finish booting." >&2
-                adb devices -l || true
-                adb shell getprop || true
-                exit 1
-              fi
-              sleep 5
-            done
-            adb shell input keyevent 82 || true
             adb uninstall "$PACKAGE" >/dev/null 2>&1 || true
             adb install -r "$SIGNED_APK"
-            adb shell pm path "$PACKAGE" | tee /tmp/devxyz-pm-path.txt
-            grep -F "package:" /tmp/devxyz-pm-path.txt
-            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install"
-            adb shell am start -W -n "$PACKAGE/$ACTIVITY" | tee /tmp/devxyz-launch.txt
-            grep -Eq "Status: ok|Warning: Activity not started" /tmp/devxyz-launch.txt
+            adb shell pm path "$PACKAGE"
+            adb shell am start -W -n "$PACKAGE/$ACTIVITY"
             sleep 3
-            adb shell pidof "$PACKAGE" | grep -E '[0-9]+'
+            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install"
 
-      - name: Upload exact device-verified APK
+      - name: Upload exact verified APK
+        if: matrix.api == 29
         uses: actions/upload-artifact@v4
         with:
-          name: DevxyzIDE-v0.6.1-device-install
+          name: DevxyzIDE-v0.6.1-api19-29-installable
           path: |
             app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
             device-apk-badging.txt

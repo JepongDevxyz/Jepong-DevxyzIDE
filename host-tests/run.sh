@@ -33,6 +33,7 @@ javac -d "$OUT" \
   "$ROOT/host-tests/ProcessEngineHostTest.java" \
   "$ROOT/host-tests/TerminalCommandPlannerHostTest.java" \
   "$ROOT/host-tests/GitServiceHostTest.java" \
+  "$ROOT/host-tests/CapabilityRegistryHostTest.java" \
   "$ROOT/host-tests/ApkSignerServiceHostTest.java" \
   "$ROOT/host-tests/ApkSignerLocatorHostTest.java" \
   "$ROOT/host-tests/ResourceIndexServiceHostTest.java" \
@@ -71,6 +72,7 @@ java -cp "$OUT" BuildDiagnosticsParserHostTest
 java -cp "$OUT" ProcessEngineHostTest
 java -cp "$OUT" TerminalCommandPlannerHostTest
 java -cp "$OUT" GitServiceHostTest
+java -cp "$OUT" CapabilityRegistryHostTest
 java -cp "$OUT" ApkSignerServiceHostTest
 java -cp "$OUT" ApkSignerLocatorHostTest
 java -cp "$OUT" ResourceIndexServiceHostTest

@@ -191,15 +191,17 @@ public final class MainActivity extends Activity {
     private void promptCreateProject() {
         final String[] templates = new String[]{
                 "Classic Java · Gradle 4.6 / AGP 3.2.1 / SDK 28",
-                "Modern AndroidX Java · JDK 17 / SDK 35"
+                "Modern AndroidX Java · JDK 17 / SDK 35",
+                "Modern AndroidX Kotlin · JDK 17 / SDK 35"
         };
         new AlertDialog.Builder(this)
                 .setTitle("Choose project template")
                 .setItems(templates, new DialogInterface.OnClickListener() {
                     @Override public void onClick(DialogInterface dialog, int which) {
-                        ProjectTemplateGenerator.Template template = which == 0
-                                ? ProjectTemplateGenerator.Template.CLASSIC_JAVA
-                                : ProjectTemplateGenerator.Template.MODERN_ANDROIDX_JAVA;
+                        ProjectTemplateGenerator.Template template;
+                        if (which == 0) template = ProjectTemplateGenerator.Template.CLASSIC_JAVA;
+                        else if (which == 1) template = ProjectTemplateGenerator.Template.MODERN_ANDROIDX_JAVA;
+                        else template = ProjectTemplateGenerator.Template.MODERN_ANDROIDX_KOTLIN;
                         promptCreateProjectDetails(template);
                     }
                 })
@@ -218,8 +220,12 @@ public final class MainActivity extends Activity {
         final EditText packageInput = new EditText(this);
         packageInput.setSingleLine(true); packageInput.setHint("Application ID"); packageInput.setText("com.example.myapp");
         form.addView(packageInput, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        String title;
+        if (template == ProjectTemplateGenerator.Template.CLASSIC_JAVA) title = "New Classic Java project";
+        else if (template == ProjectTemplateGenerator.Template.MODERN_ANDROIDX_KOTLIN) title = "New AndroidX Kotlin project";
+        else title = "New AndroidX Java project";
         new AlertDialog.Builder(this)
-                .setTitle(template == ProjectTemplateGenerator.Template.CLASSIC_JAVA ? "New Classic Java project" : "New AndroidX Java project")
+                .setTitle(title)
                 .setView(form)
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Create", new DialogInterface.OnClickListener() {

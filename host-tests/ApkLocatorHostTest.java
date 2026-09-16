@@ -12,9 +12,10 @@ public final class ApkLocatorHostTest {
 
     public static void main(String[] args) throws Exception {
         findsNewestStructurallyValidDebugApk();
+        findsReleaseApkByVariant();
         rejectsPlainFileWithApkExtension();
         rejectsZipWithoutAndroidManifest();
-        System.out.println("APK LOCATOR HOST TESTS PASSED: " + passed + "/3");
+        System.out.println("APK LOCATOR HOST TESTS PASSED: " + passed + "/4");
     }
 
     private static void findsNewestStructurallyValidDebugApk() throws Exception {
@@ -32,6 +33,19 @@ public final class ApkLocatorHostTest {
             File found = ApkLocator.findDebugApk(root);
             assertEquals(valid.getCanonicalFile(), found == null ? null : found.getCanonicalFile());
             assertTrue(ApkLocator.isStructurallyValidApk(valid));
+            passed++;
+        } finally { deleteTree(root); }
+    }
+
+    private static void findsReleaseApkByVariant() throws Exception {
+        File root = Files.createTempDirectory("devxyz-release-locator").toFile();
+        try {
+            File output = new File(root, "app/build/outputs/apk/release");
+            output.mkdirs();
+            File release = new File(output, "app-release-unsigned.apk");
+            writeApk(release, true);
+            File found = ApkLocator.findApk(root, "release");
+            assertEquals(release.getCanonicalFile(), found == null ? null : found.getCanonicalFile());
             passed++;
         } finally { deleteTree(root); }
     }

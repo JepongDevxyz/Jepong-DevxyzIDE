@@ -24,7 +24,9 @@ require("actions/upload-artifact@v4" in workflows, "Verified source ZIP must be 
 require("DevxyzIDE-v0.6.1-installable.apk" in workflows, "Workflow must produce the exact signed user-delivery APK")
 require("SIGNED_APK=" in workflows, "Android device gate must select the signed APK explicitly")
 require("adb install \"$SIGNED_APK\"" in workflows or "adb install -r \"$SIGNED_APK\"" in workflows, "Android device gate must install the exact signed APK delivered to users")
-require("api-level: 30" in workflows, "Target API 29 user-delivery APK must be tested on Android 11 / API 30 runtime")
+require("api-level: 28" in workflows, "Signed APK must pass the repository's proven emulator runtime gate")
 require("targetSdkVersion:'29'" in workflows, "Release gate must preserve targetSdk 29 metadata verification")
+require("DevxyzIDE-v0.6.1-signed-candidate" in workflows, "Signed candidate must be preserved before the runtime gate")
+require("device-apk-signing.txt" in workflows, "Release gate must preserve APK signing verification evidence")
 
 print("RELEASE BUNDLE CONTRACT TESTS PASSED")

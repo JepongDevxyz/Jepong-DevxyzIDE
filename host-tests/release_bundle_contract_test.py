@@ -23,7 +23,8 @@ require("sha256sum" in workflows, "Verified source ZIP must publish a SHA-256 ch
 require("actions/upload-artifact@v4" in workflows, "Verified source ZIP must be uploaded as an Actions artifact")
 require("DevxyzIDE-v0.6.1-installable.apk" in workflows, "Workflow must produce the exact signed user-delivery APK")
 require("SIGNED_APK=" in workflows, "Android device gate must select the signed APK explicitly")
-require("adb install -r \"$SIGNED_APK\"" in workflows, "Android device gate must install the exact signed APK delivered to users")
-require("api-level: 29" in workflows, "User-delivery APK must be tested on the configured API 29 emulator")
+require("adb install \"$SIGNED_APK\"" in workflows or "adb install -r \"$SIGNED_APK\"" in workflows, "Android device gate must install the exact signed APK delivered to users")
+require("api-level: 30" in workflows, "Target API 29 user-delivery APK must be tested on Android 11 / API 30 runtime")
+require("targetSdkVersion:'29'" in workflows, "Release gate must preserve targetSdk 29 metadata verification")
 
 print("RELEASE BUNDLE CONTRACT TESTS PASSED")

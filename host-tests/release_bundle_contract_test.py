@@ -22,7 +22,8 @@ require("unzip -t" in workflows, "Verified source ZIP must receive an integrity 
 require("sha256sum" in workflows, "Verified source ZIP must publish a SHA-256 checksum")
 require("actions/upload-artifact@v4" in workflows, "Verified source ZIP must be uploaded as an Actions artifact")
 require("DevxyzIDE-v0.6.1-installable.apk" in workflows, "Workflow must produce the exact signed user-delivery APK")
-require("SIGNED_APK=" in workflows, "Signing gate must select the signed APK explicitly")
+require("apksigner\" sign" in workflows and "--out app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk" in workflows,
+        "Signing gate must write the exact user-delivery APK explicitly")
 require("adb install ./DevxyzIDE-v0.6.1-installable.apk" in workflows, "Android device gate must install the exact flattened signed APK delivered to users")
 require("script: ./verify-device.sh" in workflows, "Android device gate must execute runtime assertions atomically in one shell process")
 require("api-level: 28" in workflows, "Signed APK must pass the repository's proven emulator runtime gate")

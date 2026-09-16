@@ -134,6 +134,37 @@ public final class RuntimeLayout {
         return explicit;
     }
 
+    /**
+     * Finds an installed APK signer without assuming the desktop Android SDK layout.
+     * Prefer an explicitly packaged/Termux-style signer, then the newest installed
+     * Android SDK build-tools version. Returns null when no real signer exists.
+     */
+    public static File findApksigner(File appFilesDir) {
+        if (appFilesDir == null) return null;
+
+        File[] direct = {
+                new File(appFilesDir, "toolchains/apksigner/apksigner"),
+                new File(appFilesDir, "usr/bin/apksigner")
+        };
+        for (File candidate : direct) if (candidate.isFile()) return candidate;
+
+        File androidSdk = findAndroidSdk(appFilesDir);
+        File buildTools = new File(androidSdk, "build-tools");
+        File[] versions = buildTools.listFiles(new FileFilter() {
+            @Override public boolean accept(File file) { return file.isDirectory(); }
+        });
+        if (versions == null || versions.length == 0) return null;
+
+        Arrays.sort(versions, new Comparator<File>() {
+            @Override public int compare(File a, File b) { return -compareVersionText(a.getName(), b.getName()); }
+        });
+        for (File version : versions) {
+            File candidate = new File(version, "apksigner");
+            if (candidate.isFile()) return candidate;
+        }
+        return null;
+    }
+
     private static int compareVersionText(String a, String b) {
         String[] aa = a.split("[.-]");
         String[] bb = b.split("[.-]");

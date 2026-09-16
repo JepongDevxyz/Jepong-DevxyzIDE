@@ -1,5 +1,7 @@
 package com.jepongdevxyz.idebuild;
 
+import com.jepongdevxyz.idebuild.core.build.BuildArtifact;
+import com.jepongdevxyz.idebuild.core.build.BuildOutputScanner;
 import com.jepongdevxyz.idebuild.core.build.BuildPlan;
 import com.jepongdevxyz.idebuild.core.build.BuildPlanner;
 import com.jepongdevxyz.idebuild.core.build.BuildTaskPolicy;
@@ -12,9 +14,12 @@ import com.jepongdevxyz.idebuild.core.toolchain.ToolchainProvisioningPlan;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public final class BuildRunner {
@@ -155,6 +160,7 @@ public final class BuildRunner {
                     int exit = result.isCancelled() ? 130 : result.getExitCode();
                     File apk = null;
                     if (exit == 0) {
+                        reportBuildArtifacts(projectRoot, listener);
                         String expectedVariant = BuildTaskPolicy.expectedApkVariant(task);
                         if (expectedVariant != null) {
                             apk = ApkLocator.findApk(projectRoot, expectedVariant);
@@ -177,6 +183,44 @@ public final class BuildRunner {
             listener.onLine("BUILD ERROR: " + e.getClass().getSimpleName() + ": " + safeMessage(e));
             finish(handle, listener, handle.cancelled ? 130 : 1, null);
         }
+    }
+
+    private static void reportBuildArtifacts(File projectRoot, Listener listener) {
+        try {
+            List<BuildArtifact> artifacts = BuildOutputScanner.scan(projectRoot, 50000);
+            if (artifacts.isEmpty()) {
+                listener.onLine("Build artifacts: none detected under */build/outputs.");
+                return;
+            }
+            listener.onLine("Build artifacts (" + artifacts.size() + "):");
+            for (BuildArtifact artifact : artifacts) listener.onLine("  - " + describeArtifact(artifact));
+        } catch (Exception e) {
+            listener.onLine("BUILD OUTPUT WARNING: artifact scan failed: " + safeMessage(e));
+        }
+    }
+
+    public static String describeArtifact(BuildArtifact artifact) {
+        if (artifact == null) throw new IllegalArgumentException("artifact == null");
+        return artifact.getType()
+                + " · variant=" + artifact.getVariant()
+                + " · " + formatBytes(artifact.getSizeBytes())
+                + " · modified=" + formatModifiedTime(artifact.getModifiedTimeMillis())
+                + " · " + artifact.getRelativePath();
+    }
+
+    private static String formatBytes(long bytes) {
+        if (bytes < 1024L) return bytes + " B";
+        double value = bytes / 1024.0;
+        if (value < 1024.0) return String.format(Locale.US, "%.1f KB", value);
+        value /= 1024.0;
+        if (value < 1024.0) return String.format(Locale.US, "%.1f MB", value);
+        value /= 1024.0;
+        return String.format(Locale.US, "%.1f GB", value);
+    }
+
+    private static String formatModifiedTime(long millis) {
+        if (millis <= 0L) return "unknown";
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date(millis));
     }
 
     private static synchronized void finish(BuildHandle handle, Listener listener, int exitCode, File apk) {

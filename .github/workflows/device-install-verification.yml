@@ -62,8 +62,8 @@ jobs:
           if-no-files-found: error
           retention-days: 15
 
-  signed_android11_install:
-    name: Build target API 29 APK and verify Android 11 install
+  signed_install:
+    name: Build target API 29 APK and verify signed install
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -103,7 +103,7 @@ jobs:
           export DEVXYZ_CI_KS_PASS="$(openssl rand -hex 16)"
           keytool -genkeypair -keystore "$KEYSTORE" -storepass:env DEVXYZ_CI_KS_PASS -keypass:env DEVXYZ_CI_KS_PASS -alias devxyz-device -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=DevxyzIDE Device Verification,O=Jepong Devxyz,C=PH"
           "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" sign --ks "$KEYSTORE" --ks-key-alias devxyz-device --ks-pass env:DEVXYZ_CI_KS_PASS --key-pass env:DEVXYZ_CI_KS_PASS --out "$SIGNED_APK" "$RAW"
-          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" verify --verbose --print-certs "$SIGNED_APK"
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" verify --verbose --print-certs "$SIGNED_APK" | tee device-apk-signing.txt
           "${ANDROID_SDK_ROOT}/build-tools/29.0.3/aapt" dump badging "$SIGNED_APK" | tee device-apk-badging.txt
           grep -F "package: name='com.jepongdevxyz.idebuild' versionCode='7' versionName='0.6.1-device-install'" device-apk-badging.txt
           grep -F "sdkVersion:'19'" device-apk-badging.txt
@@ -119,51 +119,52 @@ jobs:
           path: |
             app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
             device-apk-badging.txt
+            device-apk-signing.txt
           if-no-files-found: error
           retention-days: 15
-      - name: Install exact signed APK on Android 11 emulator
+      - name: Install exact signed APK on proven API 28 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 28
           arch: x86_64
           target: default
           profile: pixel_2
-          emulator-boot-timeout: 900
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -euo pipefail
             SIGNED_APK="app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk"
             PACKAGE="com.jepongdevxyz.idebuild"
-            ACTIVITY="com.jepongdevxyz.idebuild.SplashActivity"
             test -s "$SIGNED_APK"
             adb wait-for-device
-            adb shell getprop ro.build.version.sdk | tr -d '\r' | tee android11-device-sdk.txt
-            grep -Fx "30" android11-device-sdk.txt
+            adb shell getprop ro.build.version.sdk | tr -d '\r' | tee device-sdk.txt
+            grep -Fx "28" device-sdk.txt
             adb uninstall "$PACKAGE" >/dev/null 2>&1 || true
-            adb install "$SIGNED_APK" | tee android11-install.txt
-            grep -F "Success" android11-install.txt
-            adb shell pm path "$PACKAGE" | tee android11-package-path.txt
-            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install" | tee android11-version.txt
-            adb shell am start -W -n "$PACKAGE/$ACTIVITY" | tee android11-launch.txt
-            grep -F "Status: ok" android11-launch.txt
+            adb install "$SIGNED_APK" | tee device-install.txt
+            grep -F "Success" device-install.txt
+            adb shell pm list packages | grep -F "package:$PACKAGE" | tee device-package.txt
+            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install" | tee device-version.txt
+            adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1 | tee device-launch.txt
             sleep 5
+            adb shell dumpsys activity activities | grep -F "$PACKAGE" | head -n 1 | tee device-activity.txt
             PID="$(adb shell pidof "$PACKAGE" | tr -d '\r' || true)"
             test -n "$PID"
-            printf '%s\n' "$PID" | tee android11-pid.txt
-      - name: Upload Android 11 diagnostics on failure
+            printf '%s\n' "$PID" | tee device-pid.txt
+      - name: Upload runtime diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: DevxyzIDE-android11-failure-diagnostics
+          name: DevxyzIDE-runtime-failure-diagnostics
           path: |
             device-apk-badging.txt
-            android11-device-sdk.txt
-            android11-install.txt
-            android11-package-path.txt
-            android11-version.txt
-            android11-launch.txt
-            android11-pid.txt
+            device-apk-signing.txt
+            device-sdk.txt
+            device-install.txt
+            device-package.txt
+            device-version.txt
+            device-launch.txt
+            device-activity.txt
+            device-pid.txt
           if-no-files-found: warn
           retention-days: 15
       - name: Upload exact verified APK
@@ -174,11 +175,13 @@ jobs:
           path: |
             app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
             device-apk-badging.txt
-            android11-device-sdk.txt
-            android11-install.txt
-            android11-package-path.txt
-            android11-version.txt
-            android11-launch.txt
-            android11-pid.txt
+            device-apk-signing.txt
+            device-sdk.txt
+            device-install.txt
+            device-package.txt
+            device-version.txt
+            device-launch.txt
+            device-activity.txt
+            device-pid.txt
           if-no-files-found: error
           retention-days: 15

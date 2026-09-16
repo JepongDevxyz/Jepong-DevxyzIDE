@@ -3,7 +3,9 @@ name: DevxyzIDE Full Android Verification
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - feature/devxyzide-release-readiness
   pull_request:
     branches: [ main ]
 

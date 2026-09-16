@@ -14,46 +14,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-      - name: Set up JDK 17 for Android SDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+        with: { packages: platform-tools }
       - name: Install build SDK
-        shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3"
-      - name: Set up JDK 8 for legacy Gradle
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '8'
-      - name: Set up Gradle 4.6
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '4.6'
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: '8' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '4.6' }
       - name: Build APK and verify API 19 metadata
         shell: bash
         run: |
           set -euo pipefail
           gradle --no-daemon --stacktrace clean assembleDebug
-          APK="app/build/outputs/apk/debug/app-debug.apk"
-          test -s "$APK"
-          unzip -t "$APK"
-          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/aapt" dump badging "$APK" | tee api19-apk-badging.txt
+          unzip -t app/build/outputs/apk/debug/app-debug.apk
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/aapt" dump badging app/build/outputs/apk/debug/app-debug.apk | tee api19-apk-badging.txt
           grep -F "package: name='com.jepongdevxyz.idebuild' versionCode='7' versionName='0.6.1-device-install'" api19-apk-badging.txt
           grep -F "sdkVersion:'19'" api19-apk-badging.txt
           grep -F "targetSdkVersion:'29'" api19-apk-badging.txt
           grep -F "launchable-activity: name='com.jepongdevxyz.idebuild.SplashActivity'" api19-apk-badging.txt
-      - name: Upload API 19 compatibility evidence
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: DevxyzIDE-api19-compatibility
           path: |
@@ -67,53 +52,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-      - name: Set up JDK 17 for Android SDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+        with: { packages: platform-tools }
       - name: Install build SDK
-        shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3"
-      - name: Set up JDK 8 for legacy Gradle
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '8'
-      - name: Set up Gradle 4.6
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '4.6'
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: '8' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '4.6' }
       - name: Build and sign exact user-delivery APK
         shell: bash
         run: |
           set -euo pipefail
           gradle --no-daemon --stacktrace clean assembleDebug
-          RAW="app/build/outputs/apk/debug/app-debug.apk"
-          SIGNED_APK="app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk"
-          KEYSTORE="${RUNNER_TEMP}/devxyz-device-install.jks"
           export DEVXYZ_CI_KS_PASS="$(openssl rand -hex 16)"
-          keytool -genkeypair -keystore "$KEYSTORE" -storepass:env DEVXYZ_CI_KS_PASS -keypass:env DEVXYZ_CI_KS_PASS -alias devxyz-device -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=DevxyzIDE Device Verification,O=Jepong Devxyz,C=PH"
-          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" sign --ks "$KEYSTORE" --ks-key-alias devxyz-device --ks-pass env:DEVXYZ_CI_KS_PASS --key-pass env:DEVXYZ_CI_KS_PASS --out "$SIGNED_APK" "$RAW"
-          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" verify --verbose --print-certs "$SIGNED_APK" | tee device-apk-signing.txt
-          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/aapt" dump badging "$SIGNED_APK" | tee device-apk-badging.txt
+          keytool -genkeypair -keystore "${RUNNER_TEMP}/devxyz-device-install.jks" -storepass:env DEVXYZ_CI_KS_PASS -keypass:env DEVXYZ_CI_KS_PASS -alias devxyz-device -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=DevxyzIDE Device Verification,O=Jepong Devxyz,C=PH"
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" sign --ks "${RUNNER_TEMP}/devxyz-device-install.jks" --ks-key-alias devxyz-device --ks-pass env:DEVXYZ_CI_KS_PASS --key-pass env:DEVXYZ_CI_KS_PASS --out app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk app/build/outputs/apk/debug/app-debug.apk
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/apksigner" verify --verbose --print-certs app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk | tee device-apk-signing.txt
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/aapt" dump badging app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk | tee device-apk-badging.txt
           grep -F "package: name='com.jepongdevxyz.idebuild' versionCode='7' versionName='0.6.1-device-install'" device-apk-badging.txt
           grep -F "sdkVersion:'19'" device-apk-badging.txt
           grep -F "targetSdkVersion:'29'" device-apk-badging.txt
-          test -s "$SIGNED_APK"
-          unzip -t "$SIGNED_APK"
-          rm -f "$KEYSTORE"
+          unzip -t app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
+          rm -f "${RUNNER_TEMP}/devxyz-device-install.jks"
           unset DEVXYZ_CI_KS_PASS
-      - name: Preserve signed APK before runtime gate
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: DevxyzIDE-v0.6.1-signed-candidate
           path: |
@@ -129,17 +97,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - name: Set up JDK 17 for emulator tooling
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
-      - name: Download exact signed candidate
-        uses: actions/download-artifact@v4
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+        with: { packages: platform-tools }
+      - uses: actions/download-artifact@v4
         with:
           name: DevxyzIDE-v0.6.1-signed-candidate
           path: verified-device-artifact
@@ -152,7 +114,6 @@ jobs:
           test -n "$FOUND_APK"
           test -s "$FOUND_APK"
           cp "$FOUND_APK" ./DevxyzIDE-v0.6.1-installable.apk
-          test -s ./DevxyzIDE-v0.6.1-installable.apk
           unzip -t ./DevxyzIDE-v0.6.1-installable.apk
       - name: Create atomic emulator verification script
         shell: bash
@@ -160,6 +121,14 @@ jobs:
           cat > verify-device.sh <<'EOF'
           #!/usr/bin/env bash
           set -euo pipefail
+          collect_runtime_evidence() {
+            adb shell dumpsys activity activities > device-activities-full.txt 2>&1 || true
+            adb shell ps -A > device-processes-full.txt 2>&1 || adb shell ps > device-processes-full.txt 2>&1 || true
+            adb logcat -d > device-logcat.txt 2>&1 || true
+            grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt > device-activity.txt 2>/dev/null || true
+            grep -F com.jepongdevxyz.idebuild device-processes-full.txt > device-pid.txt 2>/dev/null || true
+          }
+          trap collect_runtime_evidence EXIT
           test -s ./DevxyzIDE-v0.6.1-installable.apk
           adb wait-for-device
           adb shell getprop ro.build.version.sdk | tr -d '\r' | tee device-sdk.txt
@@ -174,16 +143,16 @@ jobs:
           grep -F versionName=0.6.1-device-install device-package-full.txt | tee device-version.txt
           adb shell am start -W -n com.jepongdevxyz.idebuild/com.jepongdevxyz.idebuild.SplashActivity | tee device-launch.txt
           grep -F 'Status: ok' device-launch.txt
-          sleep 5
-          adb shell dumpsys activity activities > device-activities-full.txt || true
-          grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt | tee device-activity.txt
-          adb shell ps -A > device-processes-full.txt
-          grep -F com.jepongdevxyz.idebuild device-processes-full.txt | tee device-pid.txt
-          adb logcat -d > device-logcat.txt || true
-          if grep -F 'FATAL EXCEPTION' device-logcat.txt | grep -F 'com.jepongdevxyz.idebuild'; then
+          sleep 6
+          collect_runtime_evidence
+          if grep -F 'FATAL EXCEPTION' device-logcat.txt >/dev/null && grep -F 'com.jepongdevxyz.idebuild' device-logcat.txt >/dev/null; then
             echo 'DevxyzIDE fatal exception detected after launch' >&2
+            grep -n -A 30 -B 5 'FATAL EXCEPTION' device-logcat.txt | tail -80 >&2 || true
             exit 1
           fi
+          test -s device-pid.txt
+          test -s device-activity.txt
+          trap - EXIT
           EOF
           chmod +x verify-device.sh
           bash -n verify-device.sh
@@ -195,7 +164,7 @@ jobs:
           target: default
           profile: pixel_2
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
           script: ./verify-device.sh
       - name: Upload runtime diagnostics on failure
         if: failure()

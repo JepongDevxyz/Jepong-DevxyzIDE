@@ -175,10 +175,10 @@ jobs:
           adb shell am start -W -n com.jepongdevxyz.idebuild/com.jepongdevxyz.idebuild.SplashActivity | tee device-launch.txt
           grep -F 'Status: ok' device-launch.txt
           sleep 5
-          adb shell pidof com.jepongdevxyz.idebuild | tr -d '\r' | tee device-pid.txt
-          test -s device-pid.txt
           adb shell dumpsys activity activities > device-activities-full.txt || true
-          grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt > device-activity.txt || true
+          grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt | tee device-activity.txt
+          adb shell ps -A > device-processes-full.txt
+          grep -F com.jepongdevxyz.idebuild device-processes-full.txt | tee device-pid.txt
           adb logcat -d > device-logcat.txt || true
           if grep -F 'FATAL EXCEPTION' device-logcat.txt | grep -F 'com.jepongdevxyz.idebuild'; then
             echo 'DevxyzIDE fatal exception detected after launch' >&2
@@ -217,6 +217,7 @@ jobs:
             device-packages-full.txt
             device-package-full.txt
             device-activities-full.txt
+            device-processes-full.txt
             device-logcat.txt
           if-no-files-found: warn
           retention-days: 15
@@ -236,5 +237,7 @@ jobs:
             device-launch.txt
             device-pid.txt
             device-activity.txt
+            device-processes-full.txt
+            device-logcat.txt
           if-no-files-found: error
           retention-days: 15

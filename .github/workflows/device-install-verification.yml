@@ -167,12 +167,16 @@ jobs:
           adb uninstall com.jepongdevxyz.idebuild >/dev/null 2>&1 || true
           adb install ./DevxyzIDE-v0.6.1-installable.apk | tee device-install.txt
           grep -Fx Success device-install.txt
-          adb shell pm list packages | grep -Fx package:com.jepongdevxyz.idebuild | tee device-package.txt
-          adb shell dumpsys package com.jepongdevxyz.idebuild | grep -F versionName=0.6.1-device-install | tee device-version.txt
+          adb shell pm list packages > device-packages-full.txt
+          grep -Fx package:com.jepongdevxyz.idebuild device-packages-full.txt | tee device-package.txt
+          adb shell dumpsys package com.jepongdevxyz.idebuild > device-package-full.txt
+          grep -F versionName=0.6.1-device-install device-package-full.txt | tee device-version.txt
           adb shell am start -W -n com.jepongdevxyz.idebuild/com.jepongdevxyz.idebuild.SplashActivity | tee device-launch.txt
           grep -F 'Status: ok' device-launch.txt
           sleep 5
-          adb shell dumpsys activity activities | grep -F com.jepongdevxyz.idebuild | head -n 1 | tee device-activity.txt
+          adb shell dumpsys activity activities > device-activities-full.txt
+          grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt > device-activity.txt
+          cat device-activity.txt
           adb shell pidof com.jepongdevxyz.idebuild | tr -d '\r' | tee device-pid.txt
           test -s device-pid.txt
           EOF
@@ -205,6 +209,9 @@ jobs:
             device-launch.txt
             device-activity.txt
             device-pid.txt
+            device-packages-full.txt
+            device-package-full.txt
+            device-activities-full.txt
           if-no-files-found: warn
           retention-days: 15
       - name: Upload exact verified APK

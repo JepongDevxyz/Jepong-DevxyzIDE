@@ -21,6 +21,8 @@ public final class BuildOutputScanner {
             @Override public int compare(BuildArtifact left, BuildArtifact right) {
                 int type = rank(left.getType()) - rank(right.getType());
                 if (type != 0) return type;
+                int variant = left.getVariant().compareTo(right.getVariant());
+                if (variant != 0) return variant;
                 return left.getRelativePath().compareTo(right.getRelativePath());
             }
         });
@@ -57,9 +59,25 @@ public final class BuildOutputScanner {
         String normalized = "/" + relative.replace(File.separatorChar, '/') + "/";
         if (normalized.indexOf("/build/outputs/") < 0) return null;
         String lower = relative.toLowerCase(java.util.Locale.US);
-        if (lower.endsWith(".apk")) return new BuildArtifact("APK", file, relative, file.length(), file.lastModified());
-        if (lower.endsWith(".aab")) return new BuildArtifact("AAB", file, relative, file.length(), file.lastModified());
+        if (lower.endsWith(".apk")) {
+            return new BuildArtifact("APK", file, relative, variantFor(relative, "APK"), file.length(), file.lastModified());
+        }
+        if (lower.endsWith(".aab")) {
+            return new BuildArtifact("AAB", file, relative, variantFor(relative, "AAB"), file.length(), file.lastModified());
+        }
         return null;
+    }
+
+    private static String variantFor(String relative, String type) {
+        String path = "/" + relative.replace(File.separatorChar, '/');
+        String marker = "APK".equals(type) ? "/build/outputs/apk/" : "/build/outputs/bundle/";
+        int markerIndex = path.indexOf(marker);
+        if (markerIndex < 0) return "unknown";
+        int start = markerIndex + marker.length();
+        int end = path.indexOf('/', start);
+        if (end < 0) end = path.length();
+        if (end <= start) return "unknown";
+        return path.substring(start, end);
     }
 
     private static boolean shouldSkipDirectory(File root, File directory) throws IOException {

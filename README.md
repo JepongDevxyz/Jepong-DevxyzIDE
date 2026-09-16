@@ -1,72 +1,69 @@
-# DevxyzIDE v0.6 Runtime + Editor Source
+# DevxyzIDE v0.6 AIDE-Compatible Test Source
 
 **App name:** DevxyzIDE  
 **Application ID:** `com.jepongdevxyz.idebuild`
 
-DevxyzIDE is an Android-on-Android IDE project. v0.6 moves the project from the early EditText prototype toward an AndroidIDE-class architecture: project-owned Gradle wrappers, project-aware JDK/SDK selection, verified runtime provisioning, a package-specific terminal bootstrap path, and Sora Editor 0.24.6.
+DevxyzIDE is an Android-on-Android IDE project. This branch is the AIDE-compatible Phase 01 adaptation: it preserves the existing on-device runtime/build architecture while hardening workspace paths, project/file operations, responsive layouts, and editor settings. It does not replace real build/runtime behavior with simulated output.
 
 ## Host application configuration
 
-DevxyzIDE itself intentionally uses:
+The DevxyzIDE host APK in this branch currently uses:
 
-- `compileSdk 37`
-- `minSdk 28`
-- `targetSdk 28`
-- Java source/target 17
-- Android Gradle Plugin 9.4.0
-- Gradle distribution target 9.6.0
+- `compileSdkVersion 28`
+- `minSdkVersion 21`
+- `targetSdkVersion 28`
+- Java source/target 7
+- Android Gradle Plugin 3.2.1
+- no external UI/editor Maven dependency in the host app
 
-The host `targetSdk 28` is deliberate for the app-private executable/toolchain model. It does **not** rewrite imported projects. A project opened in DevxyzIDE keeps its own `compileSdk`, `minSdk`, `targetSdk`, AGP, Gradle Wrapper, repositories, dependencies, and build scripts.
+GitHub Actions builds the host APK with Gradle 4.6 and JDK 8 after running the portable host/runtime tests under JDK 17. These host settings do **not** rewrite imported projects. Imported Android projects keep their own Gradle scripts, repositories, dependencies, SDK requirements, and Gradle Wrapper where supported.
 
 ## Implemented in this source snapshot
 
 - Jepong Devxyz launcher icon and splash screen
-- secure ZIP project import with ZIP-slip protection
-- generated/cache filtering (`build/`, `.gradle/`, machine-local `local.properties`)
-- project explorer
-- Sora Editor 0.24.6 with built-in line numbers and Java language highlighting
-- portrait and landscape CodeEditor layouts
-- open/save text and source files
+- secure ZIP project import with ZIP-slip/path containment protection
+- source-focused ZIP backup through Android Storage Access Framework
+- project-relative path model and root-contained workspace resolution
+- lazy current-directory project explorer rather than full recursive refresh scans
+- real new-file/new-folder, rename, duplicate, and confirmed delete actions
+- classic Java and AndroidX Java project templates
+- multi-tab editor session model with dirty state and Save All
+- literal current-file search/replace
+- cancelable project-wide text search
+- build output parsing into navigable Problems
+- portrait stacked workspace and landscape side-by-side explorer/editor workspace
+- persistent editor font-size and word-wrap settings
 - project Gradle Wrapper detection
 - Gradle / AGP / SDK requirement analysis
 - Groovy and Kotlin DSL detection
 - version catalog detection
 - AndroidX / Kotlin / Compose / native-build indicators
-- Maven repository discovery without rewriting repository declarations
-- repository credential redaction in diagnostics
-- JDK compatibility selection for older and current Gradle/AGP lines
+- repository discovery and credential redaction in diagnostics
+- project-aware JDK / Gradle / Android SDK capability selection
 - dual runtime layout support:
   - Devxyz toolchain packs under `files/toolchains/`
   - Termux-style runtime under `files/usr` + `files/home`
-- persistent Gradle dependency/wrapper cache
+- persistent Gradle cache support
 - Android SDK and Android-host `aapt2` discovery
-- custom Gradle tasks and offline mode
-- NDK/CMake detection
-- verified runtime/toolchain packs with size + SHA-256 validation
-- package-specific terminal bootstrap installer with path-traversal and applicationId checks
-- runtime bootstrap UI import action
+- offline/custom Gradle task support in the build layer
+- verified runtime/toolchain pack installation with size + SHA-256 checks
+- package-specific terminal bootstrap installer with path-traversal and applicationId validation
+- runtime bootstrap import action
 - APK discovery and Android package-installer handoff
 
-## Modern editor
+## Editor status
 
-The source pins:
-
-```gradle
-implementation 'io.github.rosemoe:editor:0.24.6'
-implementation 'io.github.rosemoe:language-java:0.24.6'
-```
-
-The old separate line-number `EditText` implementation has been removed from both portrait and landscape layouts.
+The AIDE-compatible host currently uses the platform Android `EditText` editor path. It does **not** currently ship Sora Editor in this branch. The current editor milestone provides open/save, multi-tab state, Save All, search/replace, project search, persisted font size, and word wrap. Rich language-server-grade completion, line-number rendering, deeper syntax services, and other advanced editor features remain later milestones and must not be treated as already implemented.
 
 ## Runtime layouts
 
-DevxyzIDE supports both its component-pack layout and the Termux-style layout used by maintained Android-on-Android IDE architectures.
+DevxyzIDE recognizes both a Termux-style app-private runtime and component packs:
 
 ```text
 files/
 ├── usr/
 │   ├── bin/
-│   └── lib/jvm/java-17-openjdk/   # or other installed JDK
+│   └── lib/jvm/
 ├── home/
 │   ├── .gradle/
 │   └── android-sdk/
@@ -74,7 +71,7 @@ files/
 │       ├── build-tools/
 │       ├── ndk/
 │       └── cmake/
-└── toolchains/                    # component-pack fallback
+└── toolchains/
     ├── jdk11/
     ├── jdk17/
     ├── jdk21/
@@ -82,31 +79,29 @@ files/
     └── aapt2/
 ```
 
-The build planner picks a compatible installed JDK and keeps the imported project's own Gradle Wrapper authoritative.
+The build planner analyzes project requirements and selects compatible installed components when available. A project's own valid Gradle Wrapper remains authoritative where supported.
 
-## Building a DevxyzIDE-prefixed terminal runtime
+## DevxyzIDE-prefixed terminal runtime
 
-Do **not** install a Termux/IDE bootstrap that was compiled for another Android application id. The fixed Android app data prefix is part of the runtime package build.
+Do **not** install a Termux/IDE bootstrap compiled for another Android application ID. The app data prefix is part of the native runtime build.
 
-`runtime-builder/build-devxyz-terminal-runtime.sh` pins the maintained `appdevforall/terminal-packages` source revision used for this snapshot and invokes its supported `-p` option with:
+`runtime-builder/build-devxyz-terminal-runtime.sh` pins the maintained `appdevforall/terminal-packages` source revision used by this project and invokes its package-specific build path for:
 
 ```text
 com.jepongdevxyz.idebuild
 ```
 
-Run its `plan` command without doing a build:
+Plan the runtime build without compiling it:
 
 ```sh
 ./runtime-builder/build-devxyz-terminal-runtime.sh plan
 ```
 
-A real runtime build requires Linux build dependencies, network access, and an exported **public** GPG key. The script does not ask for or store a private signing key.
+A real native runtime build requires its documented Linux dependencies and network/source inputs. Bootstrap archives are stamped by `tools/runtime/stamp_bootstrap.py`, and DevxyzIDE rejects a stamped bootstrap whose `applicationId` does not exactly match the app.
 
-Generated bootstrap archives are stamped by `tools/runtime/stamp_bootstrap.py`; DevxyzIDE refuses a stamped bootstrap whose `applicationId` does not exactly match the app.
+## Verified component packs
 
-## Creating a verified component pack
-
-`tools/runtime/make_toolchain_pack.py` converts an already prepared JDK / SDK / aapt2 / NDK / CMake directory into the double-verified pack format used by `ToolchainPackInstaller`.
+`tools/runtime/make_toolchain_pack.py` converts an already prepared JDK / SDK / Android-native tool directory into the verified pack format consumed by `ToolchainPackInstaller`.
 
 Example:
 
@@ -117,25 +112,22 @@ python3 tools/runtime/make_toolchain_pack.py \
   --output ./jdk17-arm64.devxyz-toolchain.zip
 ```
 
-## Maven behavior
+The pack installer validates declared size/hashes before accepting executable/toolchain content.
 
-DevxyzIDE does not maintain a fake whitelist of Maven libraries. The imported Gradle project keeps `google()`, `mavenCentral()`, `mavenLocal()`, custom Maven repositories, version catalogs, plugin repositories, authentication declarations, and dependency coordinates. Gradle performs normal dependency resolution using DevxyzIDE's persistent `GRADLE_USER_HOME`.
+## Maven and imported-project behavior
 
-No IDE can guarantee that a dead repository, invalid credentials, corrupt artifact, desktop-only plugin, incompatible AGP/JDK combination, or unsupported native ABI will work. DevxyzIDE's goal is compatibility with valid Android/Gradle projects supported by their own declared toolchains.
+DevxyzIDE does not fake a library whitelist. Imported projects retain their declared Gradle repositories, version catalogs, plugin repositories, dependency coordinates, and credentials configuration. Gradle performs dependency resolution when a compatible runtime is actually available.
 
-## Verification boundary
+No IDE can make an unavailable repository, invalid credentials, corrupt artifact, desktop-only plugin, incompatible toolchain combination, or unsupported device ABI work. DevxyzIDE should report those limitations instead of fabricating a successful sync/build.
 
-The portable Java/core logic and source contracts are tested in this workspace. This environment does not provide an Android ARM device/runtime or a full Android SDK installation, so it cannot prove the final on-phone chain here:
+## Current automated verification
 
-```text
-DevxyzIDE APK
-→ install DevxyzIDE-prefixed ARM runtime
-→ install Android SDK / Android-host aapt2
-→ run imported project's Gradle Wrapper
-→ resolve Maven dependencies
-→ assembleDebug / bundle task
-→ produce APK/AAB
-→ verify/install/run
-```
+The repository workflow currently verifies the host application with:
 
-That physical-device test is the next hard gate before calling DevxyzIDE a complete AndroidIDE replacement.
+1. portable host/runtime/source-contract tests;
+2. a clean real debug APK build;
+3. APK existence, ZIP integrity, and package badging checks;
+4. uploaded APK artifact;
+5. API 28 Android emulator installation and launcher/activity startup.
+
+Those checks verify the **DevxyzIDE host APK**. They do not prove every imported Android project or the full ARM64 on-phone toolchain. The remaining hard gate for a complete AndroidIDE-class claim is physical Android ARM64 evidence covering runtime installation, project Gradle execution, dependency resolution, Android-native build tools, generated APK/AAB, and install/run of the project produced inside DevxyzIDE.

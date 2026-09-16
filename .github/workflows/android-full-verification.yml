@@ -86,13 +86,48 @@ jobs:
           "${ANDROID_SDK_ROOT}/build-tools/28.0.3/aapt" dump badging "$APK" | tee apk-badging.txt
           grep -F "package: name='com.jepongdevxyz.idebuild'" apk-badging.txt
 
+      - name: Verify real Android SDK APK signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          SIGNED="app/build/outputs/apk/debug/app-ci-signed.apk"
+          KEYSTORE="${RUNNER_TEMP}/devxyz-ci-signing.jks"
+          export DEVXYZ_CI_KS_PASS="$(openssl rand -hex 16)"
+          keytool -genkeypair \
+            -keystore "$KEYSTORE" \
+            -storepass:env DEVXYZ_CI_KS_PASS \
+            -keypass:env DEVXYZ_CI_KS_PASS \
+            -alias devxyz-ci \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 2 \
+            -dname "CN=DevxyzIDE CI,O=Jepong Devxyz,C=PH"
+          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/apksigner" sign \
+            --ks "$KEYSTORE" \
+            --ks-key-alias devxyz-ci \
+            --ks-pass env:DEVXYZ_CI_KS_PASS \
+            --key-pass env:DEVXYZ_CI_KS_PASS \
+            --out "$SIGNED" \
+            "$APK"
+          test -s "$SIGNED"
+          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/apksigner" verify \
+            --verbose \
+            --print-certs \
+            "$SIGNED" | tee apk-signing-verification.txt
+          unzip -t "$SIGNED"
+          rm -f "$KEYSTORE"
+          unset DEVXYZ_CI_KS_PASS
+
       - name: Upload verified APK
         uses: actions/upload-artifact@v4
         with:
           name: DevxyzIDE-v0.6-debug-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/app-ci-signed.apk
             apk-badging.txt
+            apk-signing-verification.txt
           if-no-files-found: error
           retention-days: 14
 

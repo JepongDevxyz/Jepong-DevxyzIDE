@@ -134,7 +134,7 @@ jobs:
   templates:
     name: Generate and build DevxyzIDE Java/Kotlin samples
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     steps:
       - name: Checkout source
@@ -201,6 +201,74 @@ jobs:
           gradle -p generated-ci/projects/DevxyzKotlinSample \
             --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee generated-kotlin-build.log
 
+      - name: Verify cached offline Java and Kotlin rebuilds
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          gradle -p generated-ci/projects/DevxyzJavaSample \
+            --offline --no-daemon --stacktrace clean :app:assembleDebug \
+            2>&1 | tee generated-java-offline-build.log
+          gradle -p generated-ci/projects/DevxyzKotlinSample \
+            --offline --no-daemon --stacktrace clean :app:assembleDebug \
+            2>&1 | tee generated-kotlin-offline-build.log
+
+      - name: Verify a missing dependency fails clearly in offline mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          MISSING_DIR="generated-ci/projects/DevxyzOfflineMissing"
+          rm -rf "$MISSING_DIR"
+          cp -a generated-ci/projects/DevxyzJavaSample "$MISSING_DIR"
+          cat >> "$MISSING_DIR/app/build.gradle" <<'EOF'
+
+          dependencies {
+              implementation 'com.jepongdevxyz.missing:offline-only:0.0.0'
+          }
+          EOF
+          set +e
+          gradle -p "$MISSING_DIR" --offline --no-daemon --stacktrace clean :app:assembleDebug \
+            > missing-dependency-offline.log 2>&1
+          STATUS=$?
+          set -e
+          if [ "$STATUS" -eq 0 ]; then
+            echo "Expected missing offline dependency build to fail" >&2
+            cat missing-dependency-offline.log
+            exit 1
+          fi
+          grep -F "com.jepongdevxyz.missing:offline-only:0.0.0" missing-dependency-offline.log
+          grep -Eiq "offline|cache|cached" missing-dependency-offline.log
+          echo "Missing offline dependency failed as expected with exit $STATUS"
+
+      - name: Verify real broken-source diagnostics are navigable
+        shell: bash
+        run: |
+          set -euo pipefail
+          BROKEN_DIR="generated-ci/projects/DevxyzBrokenJavaSample"
+          BROKEN_SOURCE="app/src/main/java/com/jepongdevxyz/devxyzsamplejava/MainActivity.java"
+          rm -rf "$BROKEN_DIR"
+          cp -a generated-ci/projects/DevxyzJavaSample "$BROKEN_DIR"
+          printf '\nTHIS_IS_NOT_VALID_JAVA\n' >> "$BROKEN_DIR/$BROKEN_SOURCE"
+          set +e
+          gradle -p "$BROKEN_DIR" --offline --no-daemon --stacktrace :app:compileDebugJavaWithJavac \
+            > broken-java-build.log 2>&1
+          STATUS=$?
+          set -e
+          if [ "$STATUS" -eq 0 ]; then
+            echo "Expected deliberately broken Java source to fail compilation" >&2
+            cat broken-java-build.log
+            exit 1
+          fi
+          rm -rf generated-ci/diagnostic-classes
+          mkdir -p generated-ci/diagnostic-classes
+          javac -d generated-ci/diagnostic-classes \
+            app/src/main/java/com/jepongdevxyz/idebuild/core/ProjectPath.java \
+            app/src/main/java/com/jepongdevxyz/idebuild/core/build/BuildProblem.java \
+            app/src/main/java/com/jepongdevxyz/idebuild/core/build/BuildDiagnosticsParser.java \
+            host-tests/VerifyBuildDiagnostics.java
+          java -cp generated-ci/diagnostic-classes VerifyBuildDiagnostics \
+            "$BROKEN_DIR" broken-java-build.log "$BROKEN_SOURCE"
+
       - name: Validate generated sample APKs
         shell: bash
         run: |
@@ -217,6 +285,7 @@ jobs:
           grep -F "package: name='com.jepongdevxyz.devxyzsamplekotlin'" generated-kotlin-badging.txt
 
       - name: Upload generated sample APKs and build logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: DevxyzIDE-generated-samples
@@ -225,9 +294,13 @@ jobs:
             generated-ci/projects/DevxyzKotlinSample/app/build/outputs/apk/debug/app-debug.apk
             generated-java-build.log
             generated-kotlin-build.log
+            generated-java-offline-build.log
+            generated-kotlin-offline-build.log
+            missing-dependency-offline.log
+            broken-java-build.log
             generated-java-badging.txt
             generated-kotlin-badging.txt
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
   emulator:

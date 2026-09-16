@@ -174,11 +174,11 @@ jobs:
           adb shell am start -W -n com.jepongdevxyz.idebuild/com.jepongdevxyz.idebuild.SplashActivity | tee device-launch.txt
           grep -F 'Status: ok' device-launch.txt
           sleep 5
-          adb shell dumpsys activity activities > device-activities-full.txt
-          grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt > device-activity.txt
-          cat device-activity.txt
           adb shell pidof com.jepongdevxyz.idebuild | tr -d '\r' | tee device-pid.txt
           test -s device-pid.txt
+          adb shell dumpsys activity activities > device-activities-full.txt || true
+          grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt > device-activity.txt || true
+          cat device-activity.txt || true
           EOF
           chmod +x verify-device.sh
           bash -n verify-device.sh

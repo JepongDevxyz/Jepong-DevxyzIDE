@@ -12,7 +12,7 @@ jobs:
   signed_device_install:
     name: Build signed APK and install on Android 15
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -81,7 +81,8 @@ jobs:
           target: google_apis
           profile: pixel_6
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-boot-timeout: 1200
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-metrics
           script: |
             set -euo pipefail
             SIGNED_APK="app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk"
@@ -89,6 +90,23 @@ jobs:
             ACTIVITY="com.jepongdevxyz.idebuild.SplashActivity"
             test -s "$SIGNED_APK"
             adb wait-for-device
+            echo "Waiting for Android framework boot completion..."
+            for i in $(seq 1 120); do
+              BOOT_COMPLETED="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+              BOOT_ANIM="$(adb shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r')"
+              if [ "$BOOT_COMPLETED" = "1" ] && { [ "$BOOT_ANIM" = "stopped" ] || [ -z "$BOOT_ANIM" ]; }; then
+                echo "Android 15 emulator framework is ready."
+                break
+              fi
+              if [ "$i" -eq 120 ]; then
+                echo "Emulator device appeared in adb but Android framework did not finish booting." >&2
+                adb devices -l || true
+                adb shell getprop || true
+                exit 1
+              fi
+              sleep 5
+            done
+            adb shell input keyevent 82 || true
             adb uninstall "$PACKAGE" >/dev/null 2>&1 || true
             adb install -r "$SIGNED_APK"
             adb shell pm path "$PACKAGE" | tee /tmp/devxyz-pm-path.txt

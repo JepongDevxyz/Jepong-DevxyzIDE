@@ -81,7 +81,6 @@ jobs:
           target: google_apis
           profile: pixel_6
           disable-animations: true
-          emulator-boot-timeout: 1200
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-metrics
           script: |
             set -euo pipefail

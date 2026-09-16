@@ -165,6 +165,7 @@ jobs:
           adb shell getprop ro.build.version.sdk | tr -d '\r' | tee device-sdk.txt
           grep -Fx 28 device-sdk.txt
           adb uninstall com.jepongdevxyz.idebuild >/dev/null 2>&1 || true
+          adb logcat -c || true
           adb install ./DevxyzIDE-v0.6.1-installable.apk | tee device-install.txt
           grep -Fx Success device-install.txt
           adb shell pm list packages > device-packages-full.txt
@@ -174,11 +175,11 @@ jobs:
           adb shell am start -W -n com.jepongdevxyz.idebuild/com.jepongdevxyz.idebuild.SplashActivity | tee device-launch.txt
           grep -F 'Status: ok' device-launch.txt
           sleep 5
-          adb shell pidof com.jepongdevxyz.idebuild | tr -d '\r' | tee device-pid.txt
-          test -s device-pid.txt
-          adb shell dumpsys activity activities > device-activities-full.txt || true
-          grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt > device-activity.txt || true
-          cat device-activity.txt || true
+          adb shell ps -A > device-processes-full.txt
+          grep -F com.jepongdevxyz.idebuild device-processes-full.txt | tee device-process.txt
+          adb shell dumpsys activity activities > device-activities-full.txt
+          grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt | tee device-activity.txt
+          adb logcat -d > device-logcat.txt || true
           EOF
           chmod +x verify-device.sh
           bash -n verify-device.sh
@@ -208,10 +209,12 @@ jobs:
             device-version.txt
             device-launch.txt
             device-activity.txt
-            device-pid.txt
+            device-process.txt
+            device-processes-full.txt
             device-packages-full.txt
             device-package-full.txt
             device-activities-full.txt
+            device-logcat.txt
           if-no-files-found: warn
           retention-days: 15
       - name: Upload exact verified APK
@@ -229,6 +232,6 @@ jobs:
             device-version.txt
             device-launch.txt
             device-activity.txt
-            device-pid.txt
+            device-process.txt
           if-no-files-found: error
           retention-days: 15

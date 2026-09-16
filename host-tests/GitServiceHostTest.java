@@ -55,12 +55,33 @@ public final class GitServiceHostTest {
             assertOk(GitService.stage(repo, "hello.txt"));
             assertOk(GitService.commit(repo, "Change", "Devxyz Test", "devxyz@example.test"));
             assertOk(GitService.push(repo, "origin", "feature/test", Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
+            assertOk(GitService.run(remote, Collections.singletonList("symbolic-ref"), Collections.singletonList("HEAD"), "refs/heads/feature/test"));
 
             File clone = new File(root, "clone");
             assertOk(GitService.cloneRepository(root, remote.getAbsolutePath(), clone.getAbsolutePath(), Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
             assertTrue(new File(clone, ".git").isDirectory());
-            passed++;
+            assertContains(GitService.currentBranch(clone).getStdout(), "feature/test");
 
+            write(new File(repo, "fetch.txt"), "available after fetch\n");
+            assertOk(GitService.stage(repo, "fetch.txt"));
+            assertOk(GitService.commit(repo, "Fetch target", "Devxyz Test", "devxyz@example.test"));
+            assertOk(GitService.push(repo, "origin", "feature/test", Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
+            assertOk(GitService.fetch(clone, "origin", Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
+            GitResult fetched = GitService.run(clone,
+                    Collections.singletonList("show"),
+                    Collections.singletonList("refs/remotes/origin/feature/test:fetch.txt"),
+                    null);
+            assertOk(fetched);
+            assertContains(fetched.getStdout(), "available after fetch");
+
+            write(new File(repo, "pull.txt"), "available after pull\n");
+            assertOk(GitService.stage(repo, "pull.txt"));
+            assertOk(GitService.commit(repo, "Pull target", "Devxyz Test", "devxyz@example.test"));
+            assertOk(GitService.push(repo, "origin", "feature/test", Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
+            assertOk(GitService.pull(clone, "origin", "feature/test", Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
+            assertContains(new String(Files.readAllBytes(new File(clone, "pull.txt").toPath()), StandardCharsets.UTF_8), "available after pull");
+
+            passed++;
             System.out.println("GIT SERVICE HOST TESTS PASSED: " + passed + "/1");
         } finally {
             deleteTree(root);

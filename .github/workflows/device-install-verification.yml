@@ -143,6 +143,15 @@ jobs:
         with:
           name: DevxyzIDE-v0.6.1-signed-candidate
           path: verified-device-artifact
+      - name: Locate downloaded signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          find verified-device-artifact -maxdepth 8 -type f -print
+          SIGNED_APK="$(find verified-device-artifact -type f -name 'DevxyzIDE-v0.6.1-installable.apk' -print -quit)"
+          test -n "$SIGNED_APK"
+          test -s "$SIGNED_APK"
+          printf '%s\n' "$SIGNED_APK" > signed-apk-path.txt
       - name: Install exact signed APK on proven API 28 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -153,12 +162,13 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            test -s verified-device-artifact/DevxyzIDE-v0.6.1-installable.apk
+            SIGNED_APK="$(cat signed-apk-path.txt)"
+            test -s "$SIGNED_APK"
             adb wait-for-device
             adb shell getprop ro.build.version.sdk | tr -d '\r' | tee device-sdk.txt
             grep -Fx 28 device-sdk.txt
             adb uninstall com.jepongdevxyz.idebuild >/dev/null 2>&1 || true
-            adb install verified-device-artifact/DevxyzIDE-v0.6.1-installable.apk | tee device-install.txt
+            adb install "$SIGNED_APK" | tee device-install.txt
             grep -F Success device-install.txt
             adb shell pm list packages | grep -F package:com.jepongdevxyz.idebuild | tee device-package.txt
             adb shell dumpsys package com.jepongdevxyz.idebuild | grep -F versionName=0.6.1-device-install | tee device-version.txt
@@ -175,6 +185,7 @@ jobs:
           path: |
             verified-device-artifact/device-apk-badging.txt
             verified-device-artifact/device-apk-signing.txt
+            signed-apk-path.txt
             device-sdk.txt
             device-install.txt
             device-package.txt
@@ -190,9 +201,10 @@ jobs:
         with:
           name: DevxyzIDE-v0.6.1-api29-installable
           path: |
-            verified-device-artifact/DevxyzIDE-v0.6.1-installable.apk
+            verified-device-artifact/**/DevxyzIDE-v0.6.1-installable.apk
             verified-device-artifact/device-apk-badging.txt
             verified-device-artifact/device-apk-signing.txt
+            signed-apk-path.txt
             device-sdk.txt
             device-install.txt
             device-package.txt

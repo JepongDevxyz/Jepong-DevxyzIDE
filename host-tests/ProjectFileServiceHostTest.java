@@ -16,8 +16,9 @@ public final class ProjectFileServiceHostTest {
         duplicateChoosesNextAvailableName();
         copyAndMoveAcrossDirectories();
         rejectsMovingDirectoryIntoItself();
+        describesFileAndDirectoryProperties();
         rejectsRootMutationAndInvalidNames();
-        System.out.println("PROJECT FILE SERVICE HOST TESTS PASSED: " + passed + "/5");
+        System.out.println("PROJECT FILE SERVICE HOST TESTS PASSED: " + passed + "/6");
     }
 
     private static void createRenameDuplicateDeleteRoundTrip() throws Exception {
@@ -26,29 +27,23 @@ public final class ProjectFileServiceHostTest {
             WorkspacePathResolver resolver = new WorkspacePathResolver(root, "local-project");
             ProjectFileService service = new ProjectFileService(resolver, "local-project");
             ProjectPath projectRoot = ProjectPath.of("local-project", "");
-
             ProjectPath app = service.createDirectory(projectRoot, "app");
             ProjectPath source = service.createFile(app, "notes.txt");
             write(resolver.resolve(source), "hello devxyz");
-
             ProjectPath duplicate = service.duplicate(source);
             assertEquals("app/notes copy.txt", duplicate.getRelativePath());
             assertEquals("hello devxyz", read(resolver.resolve(duplicate)));
-
             ProjectPath renamed = service.rename(duplicate, "renamed.txt");
             assertEquals("app/renamed.txt", renamed.getRelativePath());
             assertFalse(resolver.resolve(duplicate).exists());
             assertTrue(resolver.resolve(renamed).isFile());
-
             ProjectPath nested = service.createDirectory(app, "nested");
             ProjectPath child = service.createFile(nested, "child.txt");
             write(resolver.resolve(child), "child");
             service.delete(nested);
             assertFalse(resolver.resolve(nested).exists());
             passed++;
-        } finally {
-            deleteTree(root);
-        }
+        } finally { deleteTree(root); }
     }
 
     private static void duplicateChoosesNextAvailableName() throws Exception {
@@ -59,15 +54,12 @@ public final class ProjectFileServiceHostTest {
             ProjectPath projectRoot = ProjectPath.of("local-project", "");
             ProjectPath source = service.createFile(projectRoot, "Main.java");
             write(resolver.resolve(source), "class Main {}");
-
             ProjectPath first = service.duplicate(source);
             ProjectPath second = service.duplicate(source);
             assertEquals("Main copy.java", first.getRelativePath());
             assertEquals("Main copy 2.java", second.getRelativePath());
             passed++;
-        } finally {
-            deleteTree(root);
-        }
+        } finally { deleteTree(root); }
     }
 
     private static void copyAndMoveAcrossDirectories() throws Exception {
@@ -80,20 +72,16 @@ public final class ProjectFileServiceHostTest {
             ProjectPath dst = service.createDirectory(projectRoot, "dst");
             ProjectPath file = service.createFile(src, "data.txt");
             write(resolver.resolve(file), "payload");
-
             ProjectPath copied = service.copyTo(file, dst);
             assertEquals("dst/data.txt", copied.getRelativePath());
             assertTrue(resolver.resolve(file).isFile());
             assertEquals("payload", read(resolver.resolve(copied)));
-
             ProjectPath moved = service.moveTo(file, dst, "moved.txt");
             assertEquals("dst/moved.txt", moved.getRelativePath());
             assertFalse(resolver.resolve(file).exists());
             assertEquals("payload", read(resolver.resolve(moved)));
             passed++;
-        } finally {
-            deleteTree(root);
-        }
+        } finally { deleteTree(root); }
     }
 
     private static void rejectsMovingDirectoryIntoItself() throws Exception {
@@ -104,16 +92,34 @@ public final class ProjectFileServiceHostTest {
             ProjectPath projectRoot = ProjectPath.of("local-project", "");
             ProjectPath parent = service.createDirectory(projectRoot, "parent");
             ProjectPath child = service.createDirectory(parent, "child");
-            expectFailure(new ThrowingRunnable() {
-                @Override public void run() throws Exception { service.moveTo(parent, child, "parent"); }
-            });
-            expectFailure(new ThrowingRunnable() {
-                @Override public void run() throws Exception { service.copyTo(parent, child); }
-            });
+            expectFailure(new ThrowingRunnable() { @Override public void run() throws Exception { service.moveTo(parent, child, "parent"); } });
+            expectFailure(new ThrowingRunnable() { @Override public void run() throws Exception { service.copyTo(parent, child); } });
             passed++;
-        } finally {
-            deleteTree(root);
-        }
+        } finally { deleteTree(root); }
+    }
+
+    private static void describesFileAndDirectoryProperties() throws Exception {
+        File root = Files.createTempDirectory("devxyz-file-properties").toFile();
+        try {
+            WorkspacePathResolver resolver = new WorkspacePathResolver(root, "local-project");
+            ProjectFileService service = new ProjectFileService(resolver, "local-project");
+            ProjectPath projectRoot = ProjectPath.of("local-project", "");
+            ProjectPath folder = service.createDirectory(projectRoot, "src");
+            ProjectPath file = service.createFile(folder, "data.txt");
+            write(resolver.resolve(file), "payload");
+
+            ProjectFileService.EntryProperties fileProperties = service.describe(file);
+            assertEquals("src/data.txt", fileProperties.getRelativePath());
+            assertFalse(fileProperties.isDirectory());
+            assertEqualsLong(7L, fileProperties.getSizeBytes());
+            assertTrue(fileProperties.getLastModifiedMillis() > 0L);
+            assertTrue(fileProperties.isReadable());
+
+            ProjectFileService.EntryProperties directoryProperties = service.describe(folder);
+            assertTrue(directoryProperties.isDirectory());
+            assertEqualsLong(-1L, directoryProperties.getSizeBytes());
+            passed++;
+        } finally { deleteTree(root); }
     }
 
     private static void rejectsRootMutationAndInvalidNames() throws Exception {
@@ -122,26 +128,16 @@ public final class ProjectFileServiceHostTest {
             WorkspacePathResolver resolver = new WorkspacePathResolver(root, "local-project");
             ProjectFileService service = new ProjectFileService(resolver, "local-project");
             ProjectPath projectRoot = ProjectPath.of("local-project", "");
-
-            expectFailure(new ThrowingRunnable() {
-                @Override public void run() throws Exception { service.delete(projectRoot); }
-            });
-            expectFailure(new ThrowingRunnable() {
-                @Override public void run() throws Exception { service.rename(projectRoot, "other"); }
-            });
-            expectFailure(new ThrowingRunnable() {
-                @Override public void run() throws Exception { service.createFile(projectRoot, "../escape.txt"); }
-            });
+            expectFailure(new ThrowingRunnable() { @Override public void run() throws Exception { service.delete(projectRoot); } });
+            expectFailure(new ThrowingRunnable() { @Override public void run() throws Exception { service.rename(projectRoot, "other"); } });
+            expectFailure(new ThrowingRunnable() { @Override public void run() throws Exception { service.createFile(projectRoot, "../escape.txt"); } });
             passed++;
-        } finally {
-            deleteTree(root);
-        }
+        } finally { deleteTree(root); }
     }
 
     private static void write(File file, String value) throws IOException {
         FileOutputStream out = new FileOutputStream(file);
-        try { out.write(value.getBytes(StandardCharsets.UTF_8)); }
-        finally { out.close(); }
+        try { out.write(value.getBytes(StandardCharsets.UTF_8)); } finally { out.close(); }
     }
 
     private static String read(File file) throws IOException {
@@ -150,9 +146,7 @@ public final class ProjectFileServiceHostTest {
 
     private static void expectFailure(ThrowingRunnable action) throws Exception {
         boolean failed = false;
-        try { action.run(); }
-        catch (IllegalArgumentException expected) { failed = true; }
-        catch (IOException expected) { failed = true; }
+        try { action.run(); } catch (IllegalArgumentException expected) { failed = true; } catch (IOException expected) { failed = true; }
         if (!failed) throw new AssertionError("Expected operation to fail");
     }
 
@@ -166,14 +160,10 @@ public final class ProjectFileServiceHostTest {
     private static void assertEquals(String expected, String actual) {
         if (!expected.equals(actual)) throw new AssertionError("Expected " + expected + " but was " + actual);
     }
-
-    private static void assertTrue(boolean value) {
-        if (!value) throw new AssertionError("Expected true");
+    private static void assertEqualsLong(long expected, long actual) {
+        if (expected != actual) throw new AssertionError("Expected " + expected + " but was " + actual);
     }
-
-    private static void assertFalse(boolean value) {
-        if (value) throw new AssertionError("Expected false");
-    }
-
+    private static void assertTrue(boolean value) { if (!value) throw new AssertionError("Expected true"); }
+    private static void assertFalse(boolean value) { if (value) throw new AssertionError("Expected false"); }
     private interface ThrowingRunnable { void run() throws Exception; }
 }

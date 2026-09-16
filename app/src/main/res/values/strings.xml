@@ -23,6 +23,7 @@
     <string name="save_all">Save All</string>
     <string name="save">Save</string>
     <string name="build">Build</string>
+    <string name="build_actions">Build Actions</string>
     <string name="install">Install</string>
     <string name="settings">Settings</string>
     <string name="no_project">No project loaded</string>

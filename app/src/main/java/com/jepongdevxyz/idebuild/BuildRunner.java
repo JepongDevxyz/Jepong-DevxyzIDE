@@ -140,7 +140,14 @@ public final class BuildRunner {
                 @Override public void onStderr(String line) { listener.onLine(line); }
                 @Override public void onFinished(ProcessResult result) {
                     int exit = result.isCancelled() ? 130 : result.getExitCode();
-                    File apk = exit == 0 ? ApkLocator.findDebugApk(projectRoot) : null;
+                    File apk = null;
+                    if (exit == 0) {
+                        apk = ApkLocator.findDebugApk(projectRoot);
+                        if (apk == null) {
+                            listener.onLine("BUILD OUTPUT ERROR: Gradle exited successfully but no structurally valid debug APK was found.");
+                            exit = 4;
+                        }
+                    }
                     finish(handle, listener, exit, apk);
                 }
             });

@@ -153,7 +153,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            set -euo pipefail
+            set -eu
             SIGNED_APK="verified-device-artifact/DevxyzIDE-v0.6.1-installable.apk"
             PACKAGE="com.jepongdevxyz.idebuild"
             test -s "$SIGNED_APK"

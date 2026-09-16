@@ -1,9 +1,12 @@
 package com.jepongdevxyz.idebuild.core.capability;
 
 import com.jepongdevxyz.idebuild.BuildRunner;
+import com.jepongdevxyz.idebuild.core.build.ProjectAnalyzer;
+import com.jepongdevxyz.idebuild.core.build.ProjectRequirements;
 import com.jepongdevxyz.idebuild.core.git.GitService;
 import com.jepongdevxyz.idebuild.core.terminal.TerminalCommandPlanner;
 import com.jepongdevxyz.idebuild.core.toolchain.RuntimeLayout;
+import com.jepongdevxyz.idebuild.core.toolchain.ToolchainProvisioningPlan;
 
 import java.io.File;
 
@@ -59,6 +62,14 @@ public final class CapabilityRegistry {
                     CapabilityStatus.UNSUPPORTED,
                     "This folder does not look like a Gradle project.");
         }
+        if (appFilesDir == null || !appFilesDir.isDirectory()) {
+            return new Capability(
+                    "gradle.build",
+                    "Gradle Build",
+                    CapabilityStatus.NEEDS_INSTALL,
+                    "DevxyzIDE runtime directory is unavailable. Install the build runtime first.");
+        }
+
         File gradle = BuildRunner.findGradleExecutable(projectRoot, appFilesDir);
         if (gradle == null || !gradle.isFile()) {
             return new Capability(
@@ -67,6 +78,27 @@ public final class CapabilityRegistry {
                     CapabilityStatus.NEEDS_INSTALL,
                     "No project Gradle Wrapper or compatible internal Gradle runtime is installed.");
         }
+
+        try {
+            ProjectRequirements requirements = ProjectAnalyzer.analyze(projectRoot);
+            ToolchainProvisioningPlan provisioning = ToolchainProvisioningPlan.create(requirements, appFilesDir);
+            if (!provisioning.isReady()) {
+                return new Capability(
+                        "gradle.build",
+                        "Gradle Build",
+                        CapabilityStatus.NEEDS_INSTALL,
+                        "Build toolchain needs installation. Missing components: "
+                                + provisioning.getRequiredComponents()
+                                + ". Install the required JDK/Android SDK components.");
+            }
+        } catch (Exception error) {
+            return new Capability(
+                    "gradle.build",
+                    "Gradle Build",
+                    CapabilityStatus.UNAVAILABLE,
+                    "Project toolchain inspection failed: " + safeMessage(error));
+        }
+
         return new Capability(
                 "gradle.build",
                 "Gradle Build",

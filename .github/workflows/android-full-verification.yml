@@ -274,32 +274,29 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -e
-            DEVXYZ_APK="$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
-            JAVA_APK="$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
-            KOTLIN_APK="$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
-            test -s "$DEVXYZ_APK"
-            test -s "$JAVA_APK"
-            test -s "$KOTLIN_APK"
+            test -s "$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
+            test -s "$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
+            test -s "$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
             adb wait-for-device
 
-            echo "Installing DevxyzIDE: $DEVXYZ_APK"
-            adb install -r "$DEVXYZ_APK"
+            echo "Installing DevxyzIDE"
+            adb install -r "$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
             adb shell pm list packages | grep -F "package:com.jepongdevxyz.idebuild"
             adb shell monkey -p com.jepongdevxyz.idebuild -c android.intent.category.LAUNCHER 1
             sleep 3
             adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.idebuild"
             adb shell am force-stop com.jepongdevxyz.idebuild
 
-            echo "Installing generated Java sample: $JAVA_APK"
-            adb install -r "$JAVA_APK"
+            echo "Installing generated Java sample"
+            adb install -r "$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
             adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsamplejava"
             adb shell monkey -p com.jepongdevxyz.devxyzsamplejava -c android.intent.category.LAUNCHER 1
             sleep 3
             adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.devxyzsamplejava"
             adb shell am force-stop com.jepongdevxyz.devxyzsamplejava
 
-            echo "Installing generated Kotlin sample: $KOTLIN_APK"
-            adb install -r "$KOTLIN_APK"
+            echo "Installing generated Kotlin sample"
+            adb install -r "$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
             adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsamplekotlin"
             adb shell monkey -p com.jepongdevxyz.devxyzsamplekotlin -c android.intent.category.LAUNCHER 1
             sleep 3

@@ -1,3 +1,4 @@
+import com.jepongdevxyz.idebuild.BuildRunner;
 import com.jepongdevxyz.idebuild.core.build.BuildArtifact;
 import com.jepongdevxyz.idebuild.core.build.BuildOutputScanner;
 
@@ -18,11 +19,22 @@ public final class BuildOutputScannerHostTest {
 
             List<BuildArtifact> results = BuildOutputScanner.scan(root, 10000);
             if (results.size() != 2) throw new AssertionError("Expected 2 artifacts but got " + results.size());
-            if (!"APK".equals(results.get(0).getType())) throw new AssertionError("APK should sort first");
-            if (!results.get(0).getRelativePath().equals("app/build/outputs/apk/debug/app-debug.apk")) throw new AssertionError(results.get(0).getRelativePath());
-            if (!"AAB".equals(results.get(1).getType())) throw new AssertionError("Expected AAB");
-            if (results.get(0).getSizeBytes() != 3L) throw new AssertionError("Wrong size");
-            System.out.println("BUILD OUTPUT SCANNER HOST TESTS PASSED: 1/1");
+            BuildArtifact apk = results.get(0);
+            BuildArtifact aab = results.get(1);
+            if (!"APK".equals(apk.getType())) throw new AssertionError("APK should sort first");
+            if (!apk.getRelativePath().equals("app/build/outputs/apk/debug/app-debug.apk")) throw new AssertionError(apk.getRelativePath());
+            if (!"debug".equals(apk.getVariant())) throw new AssertionError("Wrong APK variant: " + apk.getVariant());
+            if (!"AAB".equals(aab.getType())) throw new AssertionError("Expected AAB");
+            if (!"release".equals(aab.getVariant())) throw new AssertionError("Wrong AAB variant: " + aab.getVariant());
+            if (apk.getSizeBytes() != 3L) throw new AssertionError("Wrong size");
+
+            String report = BuildRunner.describeArtifact(apk);
+            if (report.indexOf("APK") < 0) throw new AssertionError("Type missing: " + report);
+            if (report.indexOf("debug") < 0) throw new AssertionError("Variant missing: " + report);
+            if (report.indexOf("3 B") < 0) throw new AssertionError("Size missing: " + report);
+            if (report.indexOf("app/build/outputs/apk/debug/app-debug.apk") < 0) throw new AssertionError("Path missing: " + report);
+            if (report.indexOf("modified=") < 0) throw new AssertionError("Modified time missing: " + report);
+            System.out.println("BUILD OUTPUT SCANNER HOST TESTS PASSED: 2/2");
         } finally { deleteTree(root); }
     }
 

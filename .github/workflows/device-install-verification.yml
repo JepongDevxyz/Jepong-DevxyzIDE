@@ -149,20 +149,47 @@ jobs:
             ACTIVITY="com.jepongdevxyz.idebuild.SplashActivity"
             test -s "$SIGNED_APK"
             adb wait-for-device
+            adb shell getprop ro.build.version.sdk | tee api29-device-sdk.txt
             adb uninstall "$PACKAGE" >/dev/null 2>&1 || true
-            adb install -r "$SIGNED_APK"
-            adb shell pm path "$PACKAGE"
-            adb shell am start -W -n "$PACKAGE/$ACTIVITY"
-            sleep 3
-            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install"
-            adb shell pidof "$PACKAGE" | grep -E '[0-9]+'
+            adb install "$SIGNED_APK" | tee api29-install.txt
+            adb shell pm path "$PACKAGE" | tee api29-package-path.txt
+            adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install" | tee api29-version.txt
+            adb shell am start -W -n "$PACKAGE/$ACTIVITY" | tee api29-launch.txt
+            grep -F "Status: ok" api29-launch.txt
+            grep -F "Activity: $PACKAGE/$ACTIVITY" api29-launch.txt
+            sleep 5
+            PID="$(adb shell pidof "$PACKAGE" | tr -d '\r' || true)"
+            test -n "$PID"
+            printf '%s\n' "$PID" | tee api29-pid.txt
+
+      - name: Upload API 29 diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevxyzIDE-api29-failure-diagnostics
+          path: |
+            device-apk-badging.txt
+            api29-device-sdk.txt
+            api29-install.txt
+            api29-package-path.txt
+            api29-version.txt
+            api29-launch.txt
+            api29-pid.txt
+          if-no-files-found: warn
+          retention-days: 15
 
       - name: Upload exact verified APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: DevxyzIDE-v0.6.1-api29-installable
           path: |
             app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
             device-apk-badging.txt
+            api29-install.txt
+            api29-package-path.txt
+            api29-version.txt
+            api29-launch.txt
+            api29-pid.txt
           if-no-files-found: error
           retention-days: 15

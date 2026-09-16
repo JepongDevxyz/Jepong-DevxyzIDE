@@ -21,7 +21,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="AIDE Test Edition · v0.7"
+            android:text="@string/edition_label"
             android:textColor="@color/devxyz_muted"
             android:textSize="12sp" />
     </LinearLayout>

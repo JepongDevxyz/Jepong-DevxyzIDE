@@ -91,6 +91,14 @@ public final class GitService {
         return execute(repository, list("git", "remote", "add", name, url), emptyEnvironment(), emptySecrets());
     }
 
+    public static GitResult fetch(File repository,
+                                  String remote,
+                                  Map<String, String> environment,
+                                  List<String> secrets) {
+        requireText(remote, "remote");
+        return execute(repository, list("git", "fetch", "--prune", remote), environment, secrets);
+    }
+
     public static GitResult pull(File repository,
                                  String remote,
                                  String branch,

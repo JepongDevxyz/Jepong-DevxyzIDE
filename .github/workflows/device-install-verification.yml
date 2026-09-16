@@ -175,8 +175,6 @@ jobs:
           adb shell am start -W -n com.jepongdevxyz.idebuild/com.jepongdevxyz.idebuild.SplashActivity | tee device-launch.txt
           grep -F 'Status: ok' device-launch.txt
           sleep 5
-          adb shell ps -A > device-processes-full.txt
-          grep -F com.jepongdevxyz.idebuild device-processes-full.txt | tee device-process.txt
           adb shell dumpsys activity activities > device-activities-full.txt
           grep -F -m 1 com.jepongdevxyz.idebuild device-activities-full.txt | tee device-activity.txt
           adb logcat -d > device-logcat.txt || true
@@ -209,8 +207,6 @@ jobs:
             device-version.txt
             device-launch.txt
             device-activity.txt
-            device-process.txt
-            device-processes-full.txt
             device-packages-full.txt
             device-package-full.txt
             device-activities-full.txt
@@ -232,6 +228,5 @@ jobs:
             device-version.txt
             device-launch.txt
             device-activity.txt
-            device-process.txt
           if-no-files-found: error
           retention-days: 15

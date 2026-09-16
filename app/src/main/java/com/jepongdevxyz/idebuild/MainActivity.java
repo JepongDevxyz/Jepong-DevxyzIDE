@@ -192,7 +192,10 @@ public final class MainActivity extends Activity {
         final String[] templates = new String[]{
                 "Classic Java · Gradle 4.6 / AGP 3.2.1 / SDK 28",
                 "Modern AndroidX Java · JDK 17 / SDK 35",
-                "Modern AndroidX Kotlin · JDK 17 / SDK 35"
+                "Modern AndroidX Kotlin · JDK 17 / SDK 35",
+                "No Activity · AndroidX Java / SDK 35",
+                "WebView App · AndroidX Java / SDK 35",
+                "Library Module · Android Library / SDK 35"
         };
         new AlertDialog.Builder(this)
                 .setTitle("Choose project template")
@@ -201,7 +204,10 @@ public final class MainActivity extends Activity {
                         ProjectTemplateGenerator.Template template;
                         if (which == 0) template = ProjectTemplateGenerator.Template.CLASSIC_JAVA;
                         else if (which == 1) template = ProjectTemplateGenerator.Template.MODERN_ANDROIDX_JAVA;
-                        else template = ProjectTemplateGenerator.Template.MODERN_ANDROIDX_KOTLIN;
+                        else if (which == 2) template = ProjectTemplateGenerator.Template.MODERN_ANDROIDX_KOTLIN;
+                        else if (which == 3) template = ProjectTemplateGenerator.Template.NO_ACTIVITY_JAVA;
+                        else if (which == 4) template = ProjectTemplateGenerator.Template.WEBVIEW_JAVA;
+                        else template = ProjectTemplateGenerator.Template.LIBRARY_JAVA;
                         promptCreateProjectDetails(template);
                     }
                 })
@@ -223,6 +229,9 @@ public final class MainActivity extends Activity {
         String title;
         if (template == ProjectTemplateGenerator.Template.CLASSIC_JAVA) title = "New Classic Java project";
         else if (template == ProjectTemplateGenerator.Template.MODERN_ANDROIDX_KOTLIN) title = "New AndroidX Kotlin project";
+        else if (template == ProjectTemplateGenerator.Template.NO_ACTIVITY_JAVA) title = "New No Activity project";
+        else if (template == ProjectTemplateGenerator.Template.WEBVIEW_JAVA) title = "New WebView App project";
+        else if (template == ProjectTemplateGenerator.Template.LIBRARY_JAVA) title = "New Library Module project";
         else title = "New AndroidX Java project";
         new AlertDialog.Builder(this)
                 .setTitle(title)

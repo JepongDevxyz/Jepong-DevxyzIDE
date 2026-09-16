@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 /** Finds real Gradle output artifacts without reporting intermediate/cache files. */
 public final class BuildOutputScanner {
@@ -56,10 +57,66 @@ public final class BuildOutputScanner {
         String relative = relativePath(root, file);
         String normalized = "/" + relative.replace(File.separatorChar, '/') + "/";
         if (normalized.indexOf("/build/outputs/") < 0) return null;
-        String lower = relative.toLowerCase(java.util.Locale.US);
-        if (lower.endsWith(".apk")) return new BuildArtifact("APK", file, relative, file.length(), file.lastModified());
-        if (lower.endsWith(".aab")) return new BuildArtifact("AAB", file, relative, file.length(), file.lastModified());
+        String lower = relative.toLowerCase(Locale.US);
+        if (lower.endsWith(".apk")) {
+            return new BuildArtifact("APK", inferVariant(relative, "apk"), file, relative, file.length(), file.lastModified());
+        }
+        if (lower.endsWith(".aab")) {
+            return new BuildArtifact("AAB", inferVariant(relative, "bundle"), file, relative, file.length(), file.lastModified());
+        }
         return null;
+    }
+
+    private static String inferVariant(String relativePath, String outputKind) {
+        String[] parts = relativePath.replace('\\', '/').split("/");
+        int start = -1;
+        for (int i = 0; i + 2 < parts.length; i++) {
+            if ("build".equals(parts[i])
+                    && "outputs".equals(parts[i + 1])
+                    && outputKind.equals(parts[i + 2])) {
+                start = i + 3;
+                break;
+            }
+        }
+        if (start < 0 || start >= parts.length - 1) return "unknown";
+
+        StringBuilder variant = new StringBuilder();
+        for (int i = start; i < parts.length - 1; i++) {
+            String part = sanitizeVariantPart(parts[i]);
+            if (part.length() == 0) continue;
+            if (variant.length() == 0) {
+                variant.append(lowerFirst(part));
+            } else {
+                variant.append(upperFirst(part));
+            }
+        }
+        return variant.length() == 0 ? "unknown" : variant.toString();
+    }
+
+    private static String sanitizeVariantPart(String value) {
+        if (value == null) return "";
+        StringBuilder out = new StringBuilder();
+        boolean upperNext = false;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (Character.isLetterOrDigit(c)) {
+                out.append(upperNext ? Character.toUpperCase(c) : c);
+                upperNext = false;
+            } else {
+                upperNext = true;
+            }
+        }
+        return out.toString();
+    }
+
+    private static String lowerFirst(String value) {
+        if (value.length() == 0) return value;
+        return Character.toLowerCase(value.charAt(0)) + value.substring(1);
+    }
+
+    private static String upperFirst(String value) {
+        if (value.length() == 0) return value;
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
     }
 
     private static boolean shouldSkipDirectory(File root, File directory) throws IOException {

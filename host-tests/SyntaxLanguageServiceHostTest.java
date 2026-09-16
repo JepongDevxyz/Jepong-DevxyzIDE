@@ -9,9 +9,10 @@ public final class SyntaxLanguageServiceHostTest {
 
     public static void main(String[] args) {
         detectsSupportedLanguages();
+        detectsLanguageFromContentWhenPathIsUnavailable();
         highlightsJavaAndKotlinBasics();
         highlightsXmlBasicsWithinBounds();
-        System.out.println("SYNTAX LANGUAGE SERVICE HOST TESTS PASSED: " + passed + "/3");
+        System.out.println("SYNTAX LANGUAGE SERVICE HOST TESTS PASSED: " + passed + "/4");
     }
 
     private static void detectsSupportedLanguages() {
@@ -23,6 +24,15 @@ public final class SyntaxLanguageServiceHostTest {
         assertEquals(SyntaxLanguage.JAVASCRIPT, SyntaxLanguageService.detect("app.js"));
         assertEquals(SyntaxLanguage.MARKDOWN, SyntaxLanguageService.detect("README.md"));
         assertEquals(SyntaxLanguage.PLAIN_TEXT, SyntaxLanguageService.detect("LICENSE"));
+        passed++;
+    }
+
+    private static void detectsLanguageFromContentWhenPathIsUnavailable() {
+        assertEquals(SyntaxLanguage.XML, SyntaxLanguageService.detectFromContent("<?xml version=\"1.0\"?><LinearLayout />"));
+        assertEquals(SyntaxLanguage.KOTLIN, SyntaxLanguageService.detectFromContent("package demo\nclass Main { fun run() { val n = 1 } }"));
+        assertEquals(SyntaxLanguage.JAVA, SyntaxLanguageService.detectFromContent("package demo;\npublic class Main { private int n; }"));
+        assertEquals(SyntaxLanguage.JSON, SyntaxLanguageService.detectFromContent("{\"enabled\": true, \"count\": 3}"));
+        assertEquals(SyntaxLanguage.PLAIN_TEXT, SyntaxLanguageService.detectFromContent("plain notes without code markers"));
         passed++;
     }
 

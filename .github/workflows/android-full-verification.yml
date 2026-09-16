@@ -16,7 +16,7 @@ jobs:
   build:
     name: Build APK with Android SDK 28
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout source
@@ -64,18 +64,41 @@ jobs:
           gradle --version
           adb version
 
+      - name: Generate production Classic Java sample
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf generated-classic
+          mkdir -p generated-classic/classes generated-classic/projects
+          javac -source 1.7 -target 1.7 -d generated-classic/classes \
+            app/src/main/java/com/jepongdevxyz/idebuild/core/build/ProjectTemplateGenerator.java \
+            host-tests/GenerateTemplateProject.java
+          java -cp generated-classic/classes GenerateTemplateProject \
+            generated-classic/projects classic com.jepongdevxyz.devxyzsampleclassic
+          test -f generated-classic/projects/DevxyzClassicJavaSample/app/build.gradle
+          test -f generated-classic/projects/DevxyzClassicJavaSample/app/src/main/java/com/jepongdevxyz/devxyzsampleclassic/MainActivity.java
+
       - name: Build debug APK
         shell: bash
         run: |
           set -o pipefail
           gradle --no-daemon --stacktrace clean assembleDebug 2>&1 | tee gradle-build.log
 
+      - name: Build generated Classic Java sample
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle -p generated-classic/projects/DevxyzClassicJavaSample \
+            --no-daemon --stacktrace clean :app:assembleDebug 2>&1 | tee generated-classic-build.log
+
       - name: Upload Gradle diagnostic log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: DevxyzIDE-gradle-build-log
-          path: gradle-build.log
+          path: |
+            gradle-build.log
+            generated-classic-build.log
           if-no-files-found: warn
           retention-days: 7
 
@@ -83,10 +106,15 @@ jobs:
         shell: bash
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
+          CLASSIC_APK="generated-classic/projects/DevxyzClassicJavaSample/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
+          test -s "$CLASSIC_APK"
           unzip -t "$APK"
+          unzip -t "$CLASSIC_APK"
           "${ANDROID_SDK_ROOT}/build-tools/28.0.3/aapt" dump badging "$APK" | tee apk-badging.txt
+          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/aapt" dump badging "$CLASSIC_APK" | tee generated-classic-badging.txt
           grep -F "package: name='com.jepongdevxyz.idebuild'" apk-badging.txt
+          grep -F "package: name='com.jepongdevxyz.devxyzsampleclassic'" generated-classic-badging.txt
 
       - name: Verify real Android SDK APK signing
         shell: bash
@@ -130,6 +158,17 @@ jobs:
             app/build/outputs/apk/debug/app-ci-signed.apk
             apk-badging.txt
             apk-signing-verification.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload generated Classic Java sample
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevxyzIDE-classic-sample
+          path: |
+            generated-classic/projects/DevxyzClassicJavaSample/app/build/outputs/apk/debug/app-debug.apk
+            generated-classic-build.log
+            generated-classic-badging.txt
           if-no-files-found: error
           retention-days: 14
 
@@ -332,6 +371,12 @@ jobs:
           name: DevxyzIDE-v0.6-debug-apk
           path: verified-artifact
 
+      - name: Download generated Classic Java sample
+        uses: actions/download-artifact@v4
+        with:
+          name: DevxyzIDE-classic-sample
+          path: generated-classic-sample
+
       - name: Download generated sample APKs
         uses: actions/download-artifact@v4
         with:
@@ -350,6 +395,7 @@ jobs:
           script: |
             set -e
             test -s "$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
+            test -s "$(find generated-classic-sample -type f -name 'app-debug.apk' -print -quit)"
             test -s "$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
             test -s "$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
             adb wait-for-device
@@ -362,7 +408,15 @@ jobs:
             adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.idebuild"
             adb shell am force-stop com.jepongdevxyz.idebuild
 
-            echo "Installing generated Java sample"
+            echo "Installing generated Classic Java sample"
+            adb install -r "$(find generated-classic-sample -type f -name 'app-debug.apk' -print -quit)"
+            adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsampleclassic"
+            adb shell monkey -p com.jepongdevxyz.devxyzsampleclassic -c android.intent.category.LAUNCHER 1
+            sleep 3
+            adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.devxyzsampleclassic"
+            adb shell am force-stop com.jepongdevxyz.devxyzsampleclassic
+
+            echo "Installing generated AndroidX Java sample"
             adb install -r "$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
             adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsamplejava"
             adb shell monkey -p com.jepongdevxyz.devxyzsamplejava -c android.intent.category.LAUNCHER 1

@@ -6,6 +6,10 @@ import java.util.zip.ZipInputStream;
 
 public final class SafeZip {
     private static final int BUFFER_SIZE = 32 * 1024;
+    private static final Object PROJECT_EXTRACTION_LOCK = new Object();
+    private static ProjectExtractionCancellation activeProjectExtraction;
+    private static boolean preparedProjectExtraction;
+    private static boolean preparedCancellationRequested;
 
     public interface CancellationSignal {
         boolean isCancelled();
@@ -29,12 +33,56 @@ public final class SafeZip {
 
     private SafeZip() {}
 
+    public static void prepareProjectExtraction() {
+        synchronized (PROJECT_EXTRACTION_LOCK) {
+            preparedProjectExtraction = true;
+            preparedCancellationRequested = false;
+        }
+    }
+
+    public static boolean cancelPreparedOrActiveProjectExtraction() {
+        synchronized (PROJECT_EXTRACTION_LOCK) {
+            if (activeProjectExtraction != null) {
+                activeProjectExtraction.cancelled = true;
+                return true;
+            }
+            if (preparedProjectExtraction) {
+                preparedCancellationRequested = true;
+                return true;
+            }
+            return false;
+        }
+    }
+
+    public static void clearProjectExtractionRequest() {
+        synchronized (PROJECT_EXTRACTION_LOCK) {
+            preparedProjectExtraction = false;
+            preparedCancellationRequested = false;
+            if (activeProjectExtraction != null) activeProjectExtraction.cancelled = true;
+        }
+    }
+
+    public static boolean isProjectExtractionActiveOrPrepared() {
+        synchronized (PROJECT_EXTRACTION_LOCK) {
+            return preparedProjectExtraction || activeProjectExtraction != null;
+        }
+    }
+
     public static void extract(InputStream source, File destination, int maxEntries, long maxBytes) throws IOException {
         extractInternal(source, destination, maxEntries, maxBytes, false, NEVER_CANCELLED, NO_PROGRESS);
     }
 
     public static void extractProject(InputStream source, File destination, int maxEntries, long maxBytes) throws IOException {
-        extractInternal(source, destination, maxEntries, maxBytes, true, NEVER_CANCELLED, NO_PROGRESS);
+        boolean cleanupOnFailure = isEmptyOrMissingDirectory(destination);
+        ProjectExtractionCancellation cancellation = beginPreparedProjectExtraction();
+        try {
+            extractInternal(source, destination, maxEntries, maxBytes, true, cancellation, NO_PROGRESS);
+        } catch (IOException failure) {
+            if (cleanupOnFailure) deleteTree(destination);
+            throw failure;
+        } finally {
+            endPreparedProjectExtraction(cancellation);
+        }
     }
 
     public static void extractProject(InputStream source,
@@ -46,6 +94,25 @@ public final class SafeZip {
         extractInternal(source, destination, maxEntries, maxBytes, true,
                 cancellation == null ? NEVER_CANCELLED : cancellation,
                 progress == null ? NO_PROGRESS : progress);
+    }
+
+    private static ProjectExtractionCancellation beginPreparedProjectExtraction() {
+        synchronized (PROJECT_EXTRACTION_LOCK) {
+            ProjectExtractionCancellation token = new ProjectExtractionCancellation();
+            token.cancelled = preparedCancellationRequested;
+            preparedProjectExtraction = false;
+            preparedCancellationRequested = false;
+            activeProjectExtraction = token;
+            return token;
+        }
+    }
+
+    private static void endPreparedProjectExtraction(ProjectExtractionCancellation token) {
+        synchronized (PROJECT_EXTRACTION_LOCK) {
+            if (activeProjectExtraction == token) activeProjectExtraction = null;
+            preparedProjectExtraction = false;
+            preparedCancellationRequested = false;
+        }
     }
 
     private static void extractInternal(InputStream source,
@@ -115,6 +182,22 @@ public final class SafeZip {
         if (cancellation != null && cancellation.isCancelled()) throw new ExtractionCanceledException();
     }
 
+    private static boolean isEmptyOrMissingDirectory(File destination) {
+        if (destination == null || !destination.exists()) return true;
+        if (!destination.isDirectory()) return false;
+        File[] children = destination.listFiles();
+        return children != null && children.length == 0;
+    }
+
+    private static void deleteTree(File file) {
+        if (file == null || !file.exists()) return;
+        File[] children = file.listFiles();
+        if (children != null) {
+            for (File child : children) deleteTree(child);
+        }
+        file.delete();
+    }
+
     public static boolean isWithinExpandedLimit(long currentBytes, long nextBytes, long maxBytes) {
         if (currentBytes < 0 || nextBytes < 0 || maxBytes < 0) return false;
         return currentBytes <= maxBytes && nextBytes <= maxBytes - currentBytes;
@@ -132,5 +215,10 @@ public final class SafeZip {
             }
         }
         return name.equals("local.properties") || name.endsWith("/local.properties");
+    }
+
+    private static final class ProjectExtractionCancellation implements CancellationSignal {
+        private volatile boolean cancelled;
+        @Override public boolean isCancelled() { return cancelled; }
     }
 }

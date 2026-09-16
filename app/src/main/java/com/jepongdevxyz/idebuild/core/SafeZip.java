@@ -7,17 +7,54 @@ import java.util.zip.ZipInputStream;
 public final class SafeZip {
     private static final int BUFFER_SIZE = 32 * 1024;
 
+    public interface CancellationSignal {
+        boolean isCancelled();
+    }
+
+    public interface ProgressListener {
+        void onProgress(int entries, long expandedBytes);
+    }
+
+    public static final class ExtractionCanceledException extends IOException {
+        public ExtractionCanceledException() { super("ZIP extraction canceled"); }
+    }
+
+    public static final CancellationSignal NEVER_CANCELLED = new CancellationSignal() {
+        @Override public boolean isCancelled() { return false; }
+    };
+
+    public static final ProgressListener NO_PROGRESS = new ProgressListener() {
+        @Override public void onProgress(int entries, long expandedBytes) { }
+    };
+
     private SafeZip() {}
 
     public static void extract(InputStream source, File destination, int maxEntries, long maxBytes) throws IOException {
-        extractInternal(source, destination, maxEntries, maxBytes, false);
+        extractInternal(source, destination, maxEntries, maxBytes, false, NEVER_CANCELLED, NO_PROGRESS);
     }
 
     public static void extractProject(InputStream source, File destination, int maxEntries, long maxBytes) throws IOException {
-        extractInternal(source, destination, maxEntries, maxBytes, true);
+        extractInternal(source, destination, maxEntries, maxBytes, true, NEVER_CANCELLED, NO_PROGRESS);
     }
 
-    private static void extractInternal(InputStream source, File destination, int maxEntries, long maxBytes, boolean projectMode) throws IOException {
+    public static void extractProject(InputStream source,
+                                      File destination,
+                                      int maxEntries,
+                                      long maxBytes,
+                                      CancellationSignal cancellation,
+                                      ProgressListener progress) throws IOException {
+        extractInternal(source, destination, maxEntries, maxBytes, true,
+                cancellation == null ? NEVER_CANCELLED : cancellation,
+                progress == null ? NO_PROGRESS : progress);
+    }
+
+    private static void extractInternal(InputStream source,
+                                        File destination,
+                                        int maxEntries,
+                                        long maxBytes,
+                                        boolean projectMode,
+                                        CancellationSignal cancellation,
+                                        ProgressListener progress) throws IOException {
         if (source == null) throw new IllegalArgumentException("source == null");
         if (destination == null) throw new IllegalArgumentException("destination == null");
         if (maxEntries <= 0 || maxBytes <= 0) throw new IllegalArgumentException("limits must be positive");
@@ -32,6 +69,7 @@ public final class SafeZip {
         try (ZipInputStream zip = new ZipInputStream(new BufferedInputStream(source))) {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
+                checkCancelled(cancellation);
                 entries++;
                 if (entries > maxEntries) throw new IOException("Archive has too many entries");
 
@@ -43,26 +81,38 @@ public final class SafeZip {
 
                 if (projectMode && shouldSkipProjectEntry(entry.getName())) {
                     zip.closeEntry();
+                    progress.onProgress(entries, totalBytes);
+                    checkCancelled(cancellation);
                     continue;
                 }
 
                 if (entry.isDirectory()) {
                     if (!out.exists() && !out.mkdirs()) throw new IOException("Cannot create directory: " + out);
+                    progress.onProgress(entries, totalBytes);
+                    checkCancelled(cancellation);
                 } else {
                     File parent = out.getParentFile();
                     if (parent != null && !parent.exists() && !parent.mkdirs()) throw new IOException("Cannot create directory: " + parent);
                     try (OutputStream output = new BufferedOutputStream(new FileOutputStream(out))) {
                         int read;
                         while ((read = zip.read(buffer)) != -1) {
+                            checkCancelled(cancellation);
                             if (!isWithinExpandedLimit(totalBytes, read, maxBytes)) throw new IOException("Archive exceeds extraction size limit");
                             totalBytes += read;
                             output.write(buffer, 0, read);
+                            progress.onProgress(entries, totalBytes);
+                            checkCancelled(cancellation);
                         }
                     }
                 }
                 zip.closeEntry();
             }
         }
+        checkCancelled(cancellation);
+    }
+
+    private static void checkCancelled(CancellationSignal cancellation) throws ExtractionCanceledException {
+        if (cancellation != null && cancellation.isCancelled()) throw new ExtractionCanceledException();
     }
 
     public static boolean isWithinExpandedLimit(long currentBytes, long nextBytes, long maxBytes) {

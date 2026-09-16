@@ -94,12 +94,62 @@ public final class ProjectFileService {
             copyRecursive(source, target);
             return target;
         } catch (IOException failure) {
-            try {
-                if (resolver.resolve(target).exists()) deleteRecursive(target);
-            } catch (IOException ignored) {
-                // Preserve the original copy failure; partial cleanup is best effort.
-            }
+            cleanupPartialTarget(target);
             throw failure;
+        }
+    }
+
+    /** Copies a file or directory into an existing project directory. */
+    public ProjectPath copyTo(ProjectPath source, ProjectPath destinationDirectory) throws IOException {
+        requireMutablePath(source);
+        requireDirectory(destinationDirectory);
+        File sourceFile = resolver.resolve(source);
+        if (!sourceFile.exists()) throw new IOException("Source does not exist: " + source.getRelativePath());
+        rejectRecursiveDestination(source, destinationDirectory, sourceFile);
+
+        ProjectPath target = child(destinationDirectory, lastName(source));
+        if (resolver.resolve(target).exists()) {
+            throw new IOException("A file or directory with that name already exists");
+        }
+        try {
+            copyRecursive(source, target);
+            return target;
+        } catch (IOException failure) {
+            cleanupPartialTarget(target);
+            throw failure;
+        }
+    }
+
+    /** Moves a file or directory into an existing project directory, optionally renaming it. */
+    public ProjectPath moveTo(ProjectPath source, ProjectPath destinationDirectory, String newName) throws IOException {
+        requireMutablePath(source);
+        requireDirectory(destinationDirectory);
+        File sourceFile = resolver.resolve(source);
+        if (!sourceFile.exists()) throw new IOException("Source does not exist: " + source.getRelativePath());
+        rejectRecursiveDestination(source, destinationDirectory, sourceFile);
+
+        ProjectPath target = child(destinationDirectory, newName);
+        File targetFile = resolver.resolve(target);
+        if (targetFile.exists()) throw new IOException("A file or directory with that name already exists");
+
+        // Normal project workspaces live on one filesystem, so prefer an atomic rename.
+        if (sourceFile.renameTo(targetFile)) return target;
+
+        // Fallback for filesystems/providers where rename is unavailable.
+        try {
+            copyRecursive(source, target);
+        } catch (IOException copyFailure) {
+            cleanupPartialTarget(target);
+            throw copyFailure;
+        }
+
+        try {
+            deleteRecursive(source);
+            return target;
+        } catch (IOException deleteFailure) {
+            // Do not leave a second apparently-successful copy after a failed move.
+            cleanupPartialTarget(target);
+            throw new IOException("Copied destination but could not remove original: " + source.getRelativePath(), deleteFailure);
         }
     }
 
@@ -108,6 +158,31 @@ public final class ProjectFileService {
         File file = resolver.resolve(path);
         if (!file.exists()) throw new IOException("Path does not exist: " + path.getRelativePath());
         deleteRecursive(path);
+    }
+
+    private void rejectRecursiveDestination(ProjectPath source,
+                                            ProjectPath destinationDirectory,
+                                            File sourceFile) throws IOException {
+        if (sourceFile.isDirectory() && isSameOrDescendant(source, destinationDirectory)) {
+            throw new IOException("A directory cannot be copied or moved into itself");
+        }
+    }
+
+    private boolean isSameOrDescendant(ProjectPath ancestor, ProjectPath candidate) throws IOException {
+        requireBackend(ancestor);
+        requireBackend(candidate);
+        String ancestorPath = ancestor.getRelativePath();
+        String candidatePath = candidate.getRelativePath();
+        if (ancestorPath.equals(candidatePath)) return true;
+        return ancestorPath.length() > 0 && candidatePath.startsWith(ancestorPath + "/");
+    }
+
+    private void cleanupPartialTarget(ProjectPath target) {
+        try {
+            if (resolver.resolve(target).exists()) deleteRecursive(target);
+        } catch (IOException ignored) {
+            // Preserve the primary operation failure; cleanup is best effort.
+        }
     }
 
     private void copyRecursive(ProjectPath source, ProjectPath target) throws IOException {
@@ -164,7 +239,7 @@ public final class ProjectFileService {
 
     private void requireMutablePath(ProjectPath path) throws IOException {
         requireBackend(path);
-        if (path.getRelativePath().length() == 0) throw new IOException("Project root cannot be renamed, duplicated, or deleted");
+        if (path.getRelativePath().length() == 0) throw new IOException("Project root cannot be renamed, duplicated, copied, moved, or deleted");
     }
 
     private void requireBackend(ProjectPath path) throws IOException {

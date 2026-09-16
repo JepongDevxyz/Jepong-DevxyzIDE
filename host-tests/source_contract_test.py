@@ -107,4 +107,11 @@ assert 'showSettingsDialog' in settings_view, "Settings action must open a funct
 assert 'setHorizontallyScrolling(!settings.isWordWrap())' in settings_view, "Word wrap must change actual editor behavior"
 assert 'editor.setTextSize(settings.getFontSizeSp())' in settings_view, "Font size preference must change actual editor text size"
 
+# Switching projects must never silently discard dirty editor tabs.
+assert 'editorSession.hasDirtyDocuments()' in main, "Project switching must detect unsaved editor tabs"
+assert 'confirmProjectSwitch' in main, "Dirty project switches must require an explicit user decision"
+assert 'saveAllBeforeProjectSwitch' in main, "Users must be able to save all dirty tabs before switching projects"
+assert 'loadProjectNow' in main, "Confirmed project switching must be separated from the dirty-state guard"
+assert 'Discard & Switch' in main and 'Save All & Switch' in main, "Project switch dialog must expose safe save/discard choices"
+
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

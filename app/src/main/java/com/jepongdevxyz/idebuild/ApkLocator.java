@@ -3,6 +3,7 @@ package com.jepongdevxyz.idebuild;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -10,11 +11,17 @@ public final class ApkLocator {
     private ApkLocator() {}
 
     public static File findDebugApk(File projectRoot) {
-        if (projectRoot == null) return null;
-        File output = new File(projectRoot, "app/build/outputs/apk/debug");
+        return findApk(projectRoot, "debug");
+    }
+
+    public static File findApk(File projectRoot, String variant) {
+        if (projectRoot == null || variant == null) return null;
+        String cleanVariant = variant.trim().toLowerCase(Locale.US);
+        if (!cleanVariant.matches("[a-z0-9_-]+")) return null;
+        File output = new File(projectRoot, "app/build/outputs/apk/" + cleanVariant);
         File[] files = output.listFiles(new FilenameFilter() {
             @Override public boolean accept(File dir, String name) {
-                return name != null && name.toLowerCase(java.util.Locale.US).endsWith(".apk");
+                return name != null && name.toLowerCase(Locale.US).endsWith(".apk");
             }
         });
         if (files == null || files.length == 0) return null;

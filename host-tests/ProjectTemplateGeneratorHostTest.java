@@ -11,8 +11,11 @@ public final class ProjectTemplateGeneratorHostTest {
         createsClassicJavaProject();
         createsModernAndroidxProject();
         createsModernAndroidxKotlinProject();
+        createsNoActivityProject();
+        createsWebViewProject();
+        createsLibraryProject();
         rejectsUnsafeNamesAndPackages();
-        System.out.println("PROJECT TEMPLATE GENERATOR HOST TESTS PASSED: " + passed + "/4");
+        System.out.println("PROJECT TEMPLATE GENERATOR HOST TESTS PASSED: " + passed + "/7");
     }
 
     private static void createsClassicJavaProject() throws Exception {
@@ -88,6 +91,70 @@ public final class ProjectTemplateGeneratorHostTest {
         }
     }
 
+    private static void createsNoActivityProject() throws Exception {
+        File parent = Files.createTempDirectory("devxyz-no-activity-template").toFile();
+        try {
+            File root = ProjectTemplateGenerator.create(
+                    parent,
+                    "No Activity",
+                    "com.example.noactivity",
+                    ProjectTemplateGenerator.Template.NO_ACTIVITY_JAVA);
+            String manifest = read(new File(root, "app/src/main/AndroidManifest.xml"));
+            String appGradle = read(new File(root, "app/build.gradle"));
+            assertContains(appGradle, "id 'com.android.application'");
+            assertContains(appGradle, "namespace 'com.example.noactivity'");
+            assertNotContains(manifest, "<activity");
+            assertFalse(new File(root, "app/src/main/java/com/example/noactivity/MainActivity.java").exists());
+            passed++;
+        } finally {
+            deleteTree(parent);
+        }
+    }
+
+    private static void createsWebViewProject() throws Exception {
+        File parent = Files.createTempDirectory("devxyz-webview-template").toFile();
+        try {
+            File root = ProjectTemplateGenerator.create(
+                    parent,
+                    "Web App",
+                    "com.example.webapp",
+                    ProjectTemplateGenerator.Template.WEBVIEW_JAVA);
+            String manifest = read(new File(root, "app/src/main/AndroidManifest.xml"));
+            String layout = read(new File(root, "app/src/main/res/layout/activity_main.xml"));
+            String activity = read(new File(root, "app/src/main/java/com/example/webapp/MainActivity.java"));
+            assertContains(manifest, "android.permission.INTERNET");
+            assertContains(layout, "<WebView");
+            assertContains(activity, "WebView webView");
+            assertContains(activity, "setJavaScriptEnabled(false)");
+            passed++;
+        } finally {
+            deleteTree(parent);
+        }
+    }
+
+    private static void createsLibraryProject() throws Exception {
+        File parent = Files.createTempDirectory("devxyz-library-template").toFile();
+        try {
+            File root = ProjectTemplateGenerator.create(
+                    parent,
+                    "My Library",
+                    "com.example.mylibrary",
+                    ProjectTemplateGenerator.Template.LIBRARY_JAVA);
+            String rootGradle = read(new File(root, "build.gradle"));
+            String appGradle = read(new File(root, "app/build.gradle"));
+            String manifest = read(new File(root, "app/src/main/AndroidManifest.xml"));
+            assertContains(rootGradle, "com.android.library");
+            assertContains(appGradle, "id 'com.android.library'");
+            assertContains(appGradle, "namespace 'com.example.mylibrary'");
+            assertNotContains(appGradle, "applicationId");
+            assertNotContains(manifest, "<activity");
+            assertTrue(new File(root, "app/src/main/java/com/example/mylibrary/LibraryApi.java").isFile());
+            passed++;
+        } finally {
+            deleteTree(parent);
+        }
+    }
+
     private static void rejectsUnsafeNamesAndPackages() throws Exception {
         File parent = Files.createTempDirectory("devxyz-template-guard").toFile();
         try {
@@ -134,6 +201,10 @@ public final class ProjectTemplateGeneratorHostTest {
 
     private static void assertTrue(boolean value) {
         if (!value) throw new AssertionError("Expected true");
+    }
+
+    private static void assertFalse(boolean value) {
+        if (value) throw new AssertionError("Expected false");
     }
 
     private interface ThrowingRunnable { void run() throws Exception; }

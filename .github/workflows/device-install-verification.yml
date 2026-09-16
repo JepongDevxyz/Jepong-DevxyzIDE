@@ -102,4 +102,4 @@ jobs:
             app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
             device-apk-badging.txt
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 15

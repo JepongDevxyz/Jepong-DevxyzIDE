@@ -123,7 +123,7 @@
             android:layout_weight="0.68"
             android:background="@color/devxyz_bg"
             android:orientation="vertical">
-            <EditText
+            <com.jepongdevxyz.idebuild.SyntaxEditText
                 android:id="@+id/editor"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"

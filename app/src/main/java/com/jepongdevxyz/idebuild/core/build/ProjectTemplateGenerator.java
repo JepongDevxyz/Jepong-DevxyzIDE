@@ -13,7 +13,8 @@ public final class ProjectTemplateGenerator {
 
     public enum Template {
         CLASSIC_JAVA,
-        MODERN_ANDROIDX_JAVA
+        MODERN_ANDROIDX_JAVA,
+        MODERN_ANDROIDX_KOTLIN
     }
 
     private ProjectTemplateGenerator() { }
@@ -32,7 +33,8 @@ public final class ProjectTemplateGenerator {
         try {
             createCommonDirectories(root, cleanPackage);
             if (template == Template.CLASSIC_JAVA) writeClassic(root, cleanName, cleanPackage);
-            else writeModern(root, cleanName, cleanPackage);
+            else if (template == Template.MODERN_ANDROIDX_JAVA) writeModern(root, cleanName, cleanPackage);
+            else writeModernKotlin(root, cleanName, cleanPackage);
             write(new File(root, ".gitignore"), ".gradle/\nlocal.properties\n**/build/\n*.iml\n");
             return root.getCanonicalFile();
         } catch (IOException failure) {
@@ -46,6 +48,7 @@ public final class ProjectTemplateGenerator {
 
     private static void createCommonDirectories(File root, String applicationId) throws IOException {
         mkdirs(new File(root, "app/src/main/java/" + applicationId.replace('.', '/')));
+        mkdirs(new File(root, "app/src/main/kotlin/" + applicationId.replace('.', '/')));
         mkdirs(new File(root, "app/src/main/res/layout"));
         mkdirs(new File(root, "app/src/main/res/values"));
     }
@@ -96,6 +99,52 @@ public final class ProjectTemplateGenerator {
     }
 
     private static void writeModern(File root, String projectName, String applicationId) throws IOException {
+        writeModernSettings(root, projectName, false);
+        writeModernProperties(root);
+        write(new File(root, "app/build.gradle"),
+                "plugins {\n" +
+                "    id 'com.android.application'\n" +
+                "}\n\n" +
+                modernAndroidBlock(applicationId) +
+                "\ndependencies {\n" +
+                "    implementation 'androidx.appcompat:appcompat:1.7.0'\n" +
+                "}\n");
+        writeManifest(root, applicationId, true);
+        writeActivity(root, applicationId, true);
+        writeLayout(root, projectName);
+        writeValues(root, projectName, true);
+        write(new File(root, "DEVXYZ_TEMPLATE.txt"),
+                "DevxyzIDE Modern AndroidX Java template\n" +
+                "Requires DevxyzIDE JDK 17 + Gradle 8.9-compatible runtime + Android SDK 35 pack.\n" +
+                "Dependencies are resolved by Gradle and retained in the persistent Gradle cache.\n");
+    }
+
+    private static void writeModernKotlin(File root, String projectName, String applicationId) throws IOException {
+        writeModernSettings(root, projectName, true);
+        writeModernProperties(root);
+        write(new File(root, "app/build.gradle"),
+                "plugins {\n" +
+                "    id 'com.android.application'\n" +
+                "    id 'org.jetbrains.kotlin.android'\n" +
+                "}\n\n" +
+                modernAndroidBlock(applicationId) +
+                "\nkotlinOptions {\n" +
+                "    jvmTarget = '17'\n" +
+                "}\n\n" +
+                "dependencies {\n" +
+                "    implementation 'androidx.appcompat:appcompat:1.7.0'\n" +
+                "}\n");
+        writeManifest(root, applicationId, true);
+        writeKotlinActivity(root, applicationId);
+        writeLayout(root, projectName);
+        writeValues(root, projectName, true);
+        write(new File(root, "DEVXYZ_TEMPLATE.txt"),
+                "DevxyzIDE Modern AndroidX Kotlin template\n" +
+                "Pinned profile: Kotlin 2.0.21 + AGP 8.7.3 + Gradle 8.9 + JDK 17 + Android SDK 35.\n" +
+                "On-device builds require the matching DevxyzIDE runtime/toolchain components.\n");
+    }
+
+    private static void writeModernSettings(File root, String projectName, boolean kotlin) throws IOException {
         write(new File(root, "settings.gradle"),
                 "pluginManagement {\n" +
                 "    repositories { google(); mavenCentral(); gradlePluginPortal() }\n" +
@@ -106,19 +155,23 @@ public final class ProjectTemplateGenerator {
                 "}\n" +
                 "rootProject.name = '" + escapeGroovy(projectName) + "'\n" +
                 "include ':app'\n");
-        write(new File(root, "build.gradle"),
+        String plugins =
                 "plugins {\n" +
                 "    id 'com.android.application' version '8.7.3' apply false\n" +
-                "}\n");
+                (kotlin ? "    id 'org.jetbrains.kotlin.android' version '2.0.21' apply false\n" : "") +
+                "}\n";
+        write(new File(root, "build.gradle"), plugins);
+    }
+
+    private static void writeModernProperties(File root) throws IOException {
         write(new File(root, "gradle.properties"),
                 "android.useAndroidX=true\n" +
                 "android.nonTransitiveRClass=true\n" +
                 "org.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8\n");
-        write(new File(root, "app/build.gradle"),
-                "plugins {\n" +
-                "    id 'com.android.application'\n" +
-                "}\n\n" +
-                "android {\n" +
+    }
+
+    private static String modernAndroidBlock(String applicationId) {
+        return "android {\n" +
                 "    namespace '" + applicationId + "'\n" +
                 "    compileSdk 35\n\n" +
                 "    defaultConfig {\n" +
@@ -132,18 +185,7 @@ public final class ProjectTemplateGenerator {
                 "        sourceCompatibility JavaVersion.VERSION_17\n" +
                 "        targetCompatibility JavaVersion.VERSION_17\n" +
                 "    }\n" +
-                "}\n\n" +
-                "dependencies {\n" +
-                "    implementation 'androidx.appcompat:appcompat:1.7.0'\n" +
-                "}\n");
-        writeManifest(root, applicationId, true);
-        writeActivity(root, applicationId, true);
-        writeLayout(root, projectName);
-        writeValues(root, projectName, true);
-        write(new File(root, "DEVXYZ_TEMPLATE.txt"),
-                "DevxyzIDE Modern AndroidX Java template\n" +
-                "Requires DevxyzIDE JDK 17 + Gradle 8.9-compatible runtime + Android SDK 35 pack.\n" +
-                "Dependencies are resolved by Gradle and retained in the persistent Gradle cache.\n");
+                "}\n";
     }
 
     private static void writeManifest(File root, String applicationId, boolean modern) throws IOException {
@@ -176,6 +218,19 @@ public final class ProjectTemplateGenerator {
                 "    @Override protected void onCreate(Bundle savedInstanceState) {\n" +
                 "        super.onCreate(savedInstanceState);\n" +
                 "        setContentView(R.layout.activity_main);\n" +
+                "    }\n" +
+                "}\n");
+    }
+
+    private static void writeKotlinActivity(File root, String applicationId) throws IOException {
+        write(new File(root, "app/src/main/kotlin/" + applicationId.replace('.', '/') + "/MainActivity.kt"),
+                "package " + applicationId + "\n\n" +
+                "import android.os.Bundle\n" +
+                "import androidx.appcompat.app.AppCompatActivity\n\n" +
+                "class MainActivity : AppCompatActivity() {\n" +
+                "    override fun onCreate(savedInstanceState: Bundle?) {\n" +
+                "        super.onCreate(savedInstanceState)\n" +
+                "        setContentView(R.layout.activity_main)\n" +
                 "    }\n" +
                 "}\n");
     }

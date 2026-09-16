@@ -110,6 +110,7 @@ public final class SyntaxEditText extends EditText {
     }
 
     public void refreshSyntaxNow() {
+        if (syntaxHandler == null || syntaxRefresh == null) return;
         syntaxHandler.removeCallbacks(syntaxRefresh);
         if (attached) EditorSyntaxStyler.apply(this, sourceHint);
     }
@@ -184,6 +185,7 @@ public final class SyntaxEditText extends EditText {
 
     private void updateGutterPaints() {
         int textColor = getCurrentTextColor();
+        if (gutterPaint == null || gutterBackgroundPaint == null || currentLinePaint == null) return;
         gutterPaint.setColor(withAlpha(textColor, 120));
         gutterPaint.setTextSize(Math.max(8f, getTextSize() * GUTTER_TEXT_SCALE));
         gutterBackgroundPaint.setColor(withAlpha(textColor, 18));
@@ -213,6 +215,10 @@ public final class SyntaxEditText extends EditText {
     }
 
     private void scheduleSyntaxRefresh() {
+        // TextView/EditText constructors can invoke overridable callbacks such as
+        // onSelectionChanged() before this subclass's field initializers run.
+        // During that construction window syntaxHandler/syntaxRefresh are null.
+        if (syntaxHandler == null || syntaxRefresh == null) return;
         syntaxHandler.removeCallbacks(syntaxRefresh);
         syntaxHandler.postDelayed(syntaxRefresh, SYNTAX_DEBOUNCE_MS);
     }
@@ -232,7 +238,7 @@ public final class SyntaxEditText extends EditText {
 
     @Override protected void onDetachedFromWindow() {
         attached = false;
-        syntaxHandler.removeCallbacks(syntaxRefresh);
+        if (syntaxHandler != null && syntaxRefresh != null) syntaxHandler.removeCallbacks(syntaxRefresh);
         super.onDetachedFromWindow();
     }
 }

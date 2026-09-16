@@ -19,20 +19,9 @@ import java.util.List;
 public final class CompletionButton extends Button {
     private static final int MAX_RESULTS = 30;
 
-    public CompletionButton(Context context) {
-        super(context);
-        init();
-    }
-
-    public CompletionButton(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init();
-    }
-
-    public CompletionButton(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
-        init();
-    }
+    public CompletionButton(Context context) { super(context); init(); }
+    public CompletionButton(Context context, AttributeSet attrs) { super(context, attrs); init(); }
+    public CompletionButton(Context context, AttributeSet attrs, int defStyleAttr) { super(context, attrs, defStyleAttr); init(); }
 
     private void init() {
         setAllCaps(false);
@@ -53,6 +42,7 @@ public final class CompletionButton extends Button {
         String text = editable == null ? "" : editable.toString();
         int cursor = Math.max(0, editor.getSelectionStart());
         SyntaxLanguage language = SyntaxLanguageService.detect(editor.getSourceHint());
+        if (language == SyntaxLanguage.PLAIN_TEXT) language = SyntaxLanguageService.detectFromContent(text);
         final String prefix = BasicCompletionService.currentPrefix(text, cursor);
         final List<String> suggestions = BasicCompletionService.complete(text, cursor, language, MAX_RESULTS);
         if (prefix.length() == 0) {

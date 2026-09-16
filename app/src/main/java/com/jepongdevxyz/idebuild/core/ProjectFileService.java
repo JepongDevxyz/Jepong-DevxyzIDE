@@ -153,6 +153,20 @@ public final class ProjectFileService {
         }
     }
 
+    /** Returns lightweight metadata without recursively scanning directories. */
+    public EntryProperties describe(ProjectPath path) throws IOException {
+        requireBackend(path);
+        File file = resolver.resolve(path);
+        if (!file.exists()) throw new IOException("Path does not exist: " + path.getRelativePath());
+        return new EntryProperties(
+                path.getRelativePath(),
+                file.isDirectory(),
+                file.isFile() ? file.length() : -1L,
+                file.lastModified(),
+                file.canRead(),
+                file.canWrite());
+    }
+
     public void delete(ProjectPath path) throws IOException {
         requireMutablePath(path);
         File file = resolver.resolve(path);
@@ -256,5 +270,35 @@ public final class ProjectFileService {
         String relative = path.getRelativePath();
         int slash = relative.lastIndexOf('/');
         return slash < 0 ? relative : relative.substring(slash + 1);
+    }
+
+    public static final class EntryProperties {
+        private final String relativePath;
+        private final boolean directory;
+        private final long sizeBytes;
+        private final long lastModifiedMillis;
+        private final boolean readable;
+        private final boolean writable;
+
+        private EntryProperties(String relativePath,
+                                boolean directory,
+                                long sizeBytes,
+                                long lastModifiedMillis,
+                                boolean readable,
+                                boolean writable) {
+            this.relativePath = relativePath;
+            this.directory = directory;
+            this.sizeBytes = sizeBytes;
+            this.lastModifiedMillis = lastModifiedMillis;
+            this.readable = readable;
+            this.writable = writable;
+        }
+
+        public String getRelativePath() { return relativePath; }
+        public boolean isDirectory() { return directory; }
+        public long getSizeBytes() { return sizeBytes; }
+        public long getLastModifiedMillis() { return lastModifiedMillis; }
+        public boolean isReadable() { return readable; }
+        public boolean isWritable() { return writable; }
     }
 }

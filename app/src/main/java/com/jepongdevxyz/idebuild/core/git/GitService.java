@@ -246,30 +246,11 @@ public final class GitService {
         return Collections.emptyList();
     }
 
-    private static List<String> list(String a, String b) {
+    private static List<String> list(String... values) {
         ArrayList<String> list = new ArrayList<String>();
-        list.add(a); list.add(b); return list;
-    }
-
-    private static List<String> list(String a, String b, String c) {
-        ArrayList<String> list = new ArrayList<String>();
-        list.add(a); list.add(b); list.add(c); return list;
-    }
-
-    private static List<String> list(String a, String b, String c, String d) {
-        ArrayList<String> list = new ArrayList<String>();
-        list.add(a); list.add(b); list.add(c); list.add(d); return list;
-    }
-
-    private static List<String> list(String a, String b, String c, String d, String e) {
-        ArrayList<String> list = new ArrayList<String>();
-        list.add(a); list.add(b); list.add(c); list.add(d); list.add(e); return list;
-    }
-
-    private static List<String> list(String a, String b, String c, String d, String e,
-                                     String f, String g, String h, String i) {
-        ArrayList<String> list = new ArrayList<String>();
-        list.add(a); list.add(b); list.add(c); list.add(d); list.add(e);
-        list.add(f); list.add(g); list.add(h); list.add(i); return list;
+        if (values != null) {
+            for (String value : values) list.add(value);
+        }
+        return list;
     }
 }

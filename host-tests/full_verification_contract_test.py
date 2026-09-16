@@ -18,4 +18,18 @@ for token in required_workflow_tokens:
 assert '"classic".equals(args[1])' in generator, 'Template CI utility must materialize the production CLASSIC_JAVA template'
 assert 'ProjectTemplateGenerator.Template.CLASSIC_JAVA' in generator, 'Classic CI project must use production template code'
 
+required_release_tokens = [
+    'package-source:',
+    'needs: [build, templates, emulator]',
+    'DevxyzIDE-verified-source.zip',
+    'git archive',
+    'sha256sum',
+    'DevxyzIDE-verified-source',
+    'docs/CAPABILITY_MATRIX.md',
+    'docs/LIMITATIONS.md',
+    'docs/VERIFICATION_REPORT.md',
+]
+for token in required_release_tokens:
+    assert token in workflow, f'Full verification workflow must gate the final verified source artifact via {token}'
+
 print('FULL VERIFICATION CONTRACT TESTS PASSED')

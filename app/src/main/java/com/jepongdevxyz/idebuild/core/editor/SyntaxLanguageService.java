@@ -56,6 +56,48 @@ public final class SyntaxLanguageService {
         return SyntaxLanguage.PLAIN_TEXT;
     }
 
+    /**
+     * Conservative fallback used only when the editor cannot supply a file path.
+     * It prefers unmistakable syntax markers and otherwise returns plain text.
+     */
+    public static SyntaxLanguage detectFromContent(String text) {
+        if (text == null) return SyntaxLanguage.PLAIN_TEXT;
+        String sample = text.length() > 8192 ? text.substring(0, 8192) : text;
+        String trimmed = sample.trim();
+        if (trimmed.length() == 0) return SyntaxLanguage.PLAIN_TEXT;
+
+        if (trimmed.startsWith("<?xml")
+                || (trimmed.startsWith("<") && trimmed.indexOf('>') > 0
+                && (trimmed.contains("android:") || trimmed.contains("xmlns:") || trimmed.startsWith("<!--")))) {
+            return SyntaxLanguage.XML;
+        }
+
+        if ((trimmed.startsWith("{") && trimmed.endsWith("}"))
+                || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+            if (trimmed.indexOf(':') >= 0 && trimmed.indexOf('"') >= 0) return SyntaxLanguage.JSON;
+        }
+
+        String lower = trimmed.toLowerCase(Locale.US);
+        boolean hasKotlinMarker = lower.contains("fun ") || lower.contains(" val ") || lower.startsWith("val ")
+                || lower.contains(" var ") || lower.startsWith("var ") || lower.contains("object ")
+                || lower.contains("companion object") || lower.contains("data class ");
+        if (hasKotlinMarker && (lower.contains("class ") || lower.contains("package ") || lower.contains("fun "))) {
+            return SyntaxLanguage.KOTLIN;
+        }
+
+        boolean hasJavaMarker = lower.contains("public class ") || lower.contains("private class ")
+                || lower.contains("protected class ") || lower.contains("public interface ")
+                || lower.contains("import java.") || lower.contains("import android.")
+                || (lower.contains("package ") && trimmed.indexOf(';') >= 0);
+        if (hasJavaMarker) return SyntaxLanguage.JAVA;
+
+        if (lower.contains("plugins {") || lower.contains("dependencies {")
+                || lower.contains("android {") || lower.contains("implementation(")) {
+            return SyntaxLanguage.GRADLE;
+        }
+        return SyntaxLanguage.PLAIN_TEXT;
+    }
+
     public static List<SyntaxSpan> scan(String text,
                                         SyntaxLanguage language,
                                         int requestedStart,
@@ -230,21 +272,10 @@ public final class SyntaxLanguageService {
         return true;
     }
 
-    private static boolean isIdentifierStart(char c) {
-        return Character.isLetter(c) || c == '_' || c == '$';
-    }
-
-    private static boolean isIdentifierPart(char c) {
-        return Character.isLetterOrDigit(c) || c == '_' || c == '$';
-    }
-
-    private static boolean isXmlNameChar(char c) {
-        return Character.isLetterOrDigit(c) || c == '_' || c == '-' || c == ':' || c == '.';
-    }
-
-    private static int clamp(int value, int min, int max) {
-        return value < min ? min : (value > max ? max : value);
-    }
+    private static boolean isIdentifierStart(char c) { return Character.isLetter(c) || c == '_' || c == '$'; }
+    private static boolean isIdentifierPart(char c) { return Character.isLetterOrDigit(c) || c == '_' || c == '$'; }
+    private static boolean isXmlNameChar(char c) { return Character.isLetterOrDigit(c) || c == '_' || c == '-' || c == ':' || c == '.'; }
+    private static int clamp(int value, int min, int max) { return value < min ? min : (value > max ? max : value); }
 
     private static Set<String> words(String... values) {
         HashSet<String> result = new HashSet<String>();

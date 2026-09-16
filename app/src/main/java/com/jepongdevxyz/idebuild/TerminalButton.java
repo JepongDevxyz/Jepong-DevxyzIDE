@@ -56,8 +56,49 @@ public final class TerminalButton extends Button {
         });
     }
 
+    /** Explicit override for callers that already own a trusted project root. */
     public void setWorkingDirectory(File projectRoot) {
         workingDirectory = projectRoot;
+    }
+
+    /**
+     * Resolves the loaded project without coupling MainActivity to this view.
+     * The project-path label always represents a path inside the active project;
+     * walking upward finds the nearest Gradle root. If no project is loaded, the
+     * command planner falls back to the app runtime home.
+     */
+    private File resolveWorkingDirectory() {
+        File explicit = workingDirectory;
+        if (explicit != null && explicit.isDirectory()) return explicit;
+
+        View rootView = getRootView();
+        View pathView = rootView == null ? null : rootView.findViewById(R.id.projectPath);
+        if (!(pathView instanceof TextView)) return null;
+
+        CharSequence label = ((TextView) pathView).getText();
+        if (label == null) return null;
+        String raw = label.toString().trim();
+        if (raw.length() == 0 || raw.equals(getResources().getString(R.string.no_project))) return null;
+
+        File current = new File(raw);
+        try { current = current.getCanonicalFile(); }
+        catch (Exception ignored) { }
+        if (!current.isDirectory()) return null;
+
+        File buildCandidate = null;
+        for (int depth = 0; current != null && depth < 64; depth++) {
+            if (new File(current, "settings.gradle").isFile()
+                    || new File(current, "settings.gradle.kts").isFile()) {
+                return current;
+            }
+            if (buildCandidate == null
+                    && (new File(current, "build.gradle").isFile()
+                    || new File(current, "build.gradle.kts").isFile())) {
+                buildCandidate = current;
+            }
+            current = current.getParentFile();
+        }
+        return buildCandidate;
     }
 
     private void showTerminalDialog() {
@@ -159,7 +200,8 @@ public final class TerminalButton extends Button {
                                 final EditText commandInput) {
         final ProcessRequest request;
         try {
-            request = TerminalCommandPlanner.plan(getContext().getFilesDir(), workingDirectory, command);
+            File cwd = resolveWorkingDirectory();
+            request = TerminalCommandPlanner.plan(getContext().getFilesDir(), cwd, command);
         } catch (Exception error) {
             appendOutput(output, scroll, "TERMINAL ERROR: " + safeMessage(error));
             return;
@@ -202,7 +244,7 @@ public final class TerminalButton extends Button {
         String shell;
         try { shell = TerminalCommandPlanner.describeShell(getContext().getFilesDir()); }
         catch (Exception error) { shell = "shell unavailable: " + safeMessage(error); }
-        File cwd = workingDirectory;
+        File cwd = resolveWorkingDirectory();
         String directory = cwd == null ? "app runtime home" : cwd.getAbsolutePath();
         return "Shell: " + shell + "\nWorking directory: " + directory;
     }

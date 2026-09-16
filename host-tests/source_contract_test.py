@@ -123,7 +123,10 @@ assert 'TerminalCommandPlanner.plan' in terminal_view, "Terminal UI must use the
 assert 'ProcessEngine.start' in terminal_view, "Terminal UI must execute a real process"
 assert 'onStdout' in terminal_view and 'onStderr' in terminal_view, "Terminal UI must stream real stdout and stderr"
 assert '.cancel()' in terminal_view, "Terminal UI must support stopping a running process"
-assert 'setWorkingDirectory' in terminal_view, "Terminal UI must accept the loaded project as cwd"
-assert 'terminalButton.setWorkingDirectory(projectRoot)' in main, "Loaded project must update terminal working directory"
+assert 'setWorkingDirectory' in terminal_view, "Terminal UI must accept an explicit trusted project cwd"
+assert 'resolveWorkingDirectory' in terminal_view, "Terminal UI must resolve the loaded project working directory"
+assert 'R.id.projectPath' in terminal_view, "Terminal UI must follow the visible loaded project path"
+assert '"settings.gradle"' in terminal_view and '"settings.gradle.kts"' in terminal_view, "Terminal UI must locate the Gradle project root"
+assert 'TerminalCommandPlanner.plan(getContext().getFilesDir(), cwd, command)' in terminal_view, "Terminal commands must execute in the resolved project context"
 
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

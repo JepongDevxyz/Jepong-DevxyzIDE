@@ -17,6 +17,7 @@ javac -d "$OUT" \
   "$ROOT/host-tests/ProjectArchiveServiceHostTest.java" \
   "$ROOT/host-tests/ProjectImportServiceHostTest.java" \
   "$ROOT/host-tests/SafeZipCancellationHostTest.java" \
+  "$ROOT/host-tests/ProjectImportStressHostTest.java" \
   "$ROOT/host-tests/BuildPlannerHostTest.java" \
   "$ROOT/host-tests/ApkLocatorHostTest.java" \
   "$ROOT/host-tests/RuntimePackDownloaderCancellationHostTest.java" \
@@ -52,6 +53,7 @@ java -cp "$OUT" ProjectTemplateGeneratorHostTest
 java -cp "$OUT" ProjectArchiveServiceHostTest
 java -cp "$OUT" ProjectImportServiceHostTest
 java -cp "$OUT" SafeZipCancellationHostTest
+java -cp "$OUT" ProjectImportStressHostTest
 java -cp "$OUT" BuildPlannerHostTest
 java -cp "$OUT" ApkLocatorHostTest
 java -cp "$OUT" RuntimePackDownloaderCancellationHostTest

@@ -13,6 +13,7 @@
     <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:fillViewport="true" android:scrollbars="none">
         <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingStart="10dp" android:paddingTop="4dp" android:paddingEnd="10dp" android:paddingBottom="4dp">
             <Button android:id="@+id/createProjectButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/create_project" />
+            <Button android:id="@+id/recentProjectsButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/recent_projects" />
             <com.jepongdevxyz.idebuild.CancelableImportButton android:id="@+id/importButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/import_zip" />
             <Button android:id="@+id/backupButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/backup_project" />
             <Button android:id="@+id/toolchainButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/toolchains" />

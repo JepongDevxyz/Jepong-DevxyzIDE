@@ -2,6 +2,7 @@
     <string name="app_name">DevxyzIDE</string>
     <string name="edition_label">AIDE Test Edition · v0.6.0</string>
     <string name="create_project">New Project</string>
+    <string name="recent_projects">Recent</string>
     <string name="import_zip">Import ZIP</string>
     <string name="cancel_import">Cancel Import</string>
     <string name="canceling_import">Cancelling…</string>

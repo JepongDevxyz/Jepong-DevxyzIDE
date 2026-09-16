@@ -2,8 +2,10 @@ package com.jepongdevxyz.idebuild;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -76,11 +78,14 @@ public final class MainActivity extends Activity {
     private static final int MAX_PROJECT_SEARCH_FILES = 100000;
     private static final int MAX_PROJECT_SEARCH_RESULTS = 500;
     private static final int MAX_BUILD_PROBLEMS = 500;
+    private static final String RECENT_PROJECTS_PREFS = "devxyz_recent_projects";
+    private static final String KEY_RECENT_PROJECTS = "recent_project_paths";
+    private static final int MAX_RECENT_PROJECTS = 12;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final EditorSession editorSession = new EditorSession();
     private final List<BuildProblem> buildProblems = new ArrayList<BuildProblem>();
-    private Button createProjectButton, importButton, backupButton, toolchainButton, runtimeButton, newFileButton, newFolderButton;
+    private Button createProjectButton, recentProjectsButton, importButton, backupButton, toolchainButton, runtimeButton, newFileButton, newFolderButton;
     private Button searchButton, projectSearchButton, saveAllButton, saveButton, buildButton, problemsButton, installButton;
     private TextView projectPath, consoleText;
     private ScrollView consoleScroll;
@@ -105,6 +110,7 @@ public final class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         createProjectButton = (Button) findViewById(R.id.createProjectButton);
+        recentProjectsButton = (Button) findViewById(R.id.recentProjectsButton);
         importButton = (Button) findViewById(R.id.importButton);
         backupButton = (Button) findViewById(R.id.backupButton);
         toolchainButton = (Button) findViewById(R.id.toolchainButton);
@@ -151,6 +157,7 @@ public final class MainActivity extends Activity {
         });
 
         createProjectButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { promptCreateProject(); } });
+        recentProjectsButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showRecentProjects(); } });
         importButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseZip(); } });
         backupButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseBackupDestination(); } });
         toolchainButton.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { chooseToolchainPack(); } });
@@ -463,9 +470,93 @@ public final class MainActivity extends Activity {
         backupButton.setEnabled(true); newFileButton.setEnabled(true); newFolderButton.setEnabled(true);
         projectSearchButton.setEnabled(true); buildButton.setEnabled(true); installButton.setEnabled(false);
         updateProblemsButton(); renderActiveEditor(); refreshCurrentDirectory();
+        recordRecentProject(canonicalRoot);
         appendConsole("Loaded project: " + canonicalRoot.getName());
         if (!new File(canonicalRoot, "gradlew").isFile()) appendConsole("No project Gradle Wrapper found; DevxyzIDE will try its internal Gradle runtime at build time.");
         analyzeProject(canonicalRoot);
+    }
+
+    private void showRecentProjects() {
+        final List<File> recentProjects = loadRecentProjects();
+        if (recentProjects.isEmpty()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Recent Projects")
+                    .setMessage("No recent projects yet.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+        String[] rows = new String[recentProjects.size()];
+        for (int i = 0; i < recentProjects.size(); i++) {
+            File recent = recentProjects.get(i);
+            rows[i] = recent.getName() + "  ·  " + recent.getAbsolutePath();
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Recent Projects")
+                .setItems(rows, new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        File recent = recentProjects.get(which);
+                        loadProject(recent);
+                    }
+                })
+                .setNegativeButton("Close", null)
+                .show();
+    }
+
+    private void recordRecentProject(File root) {
+        if (root == null) return;
+        try {
+            File canonicalFile = root.getCanonicalFile();
+            if (!canonicalFile.isDirectory()) return;
+            List<File> projects = loadRecentProjects();
+            for (int i = projects.size() - 1; i >= 0; i--) {
+                if (projects.get(i).getCanonicalPath().equals(canonicalFile.getCanonicalPath())) projects.remove(i);
+            }
+            projects.add(0, canonicalFile);
+            while (projects.size() > MAX_RECENT_PROJECTS) projects.remove(projects.size() - 1);
+            saveRecentProjects(projects);
+        } catch (IOException e) {
+            appendConsole("RECENT PROJECTS ERROR: " + e.getMessage());
+        }
+    }
+
+    private List<File> loadRecentProjects() {
+        List<File> projects = new ArrayList<File>();
+        SharedPreferences preferences = getSharedPreferences(RECENT_PROJECTS_PREFS, Context.MODE_PRIVATE);
+        String raw = preferences.getString(KEY_RECENT_PROJECTS, "");
+        String[] lines = raw.split("\\n");
+        for (int i = 0; i < lines.length && projects.size() < MAX_RECENT_PROJECTS; i++) {
+            String path = lines[i].trim();
+            if (path.length() == 0) continue;
+            try {
+                File candidate = new File(path);
+                File canonicalFile = candidate.getCanonicalFile();
+                if (canonicalFile.isDirectory() && !containsProject(projects, canonicalFile)) projects.add(canonicalFile);
+            } catch (IOException ignored) { }
+        }
+        return projects;
+    }
+
+    private void saveRecentProjects(List<File> projects) throws IOException {
+        StringBuilder value = new StringBuilder();
+        for (int i = 0; i < projects.size() && i < MAX_RECENT_PROJECTS; i++) {
+            File canonicalFile = projects.get(i).getCanonicalFile();
+            if (!canonicalFile.isDirectory()) continue;
+            if (value.length() > 0) value.append('\n');
+            value.append(canonicalFile.getAbsolutePath());
+        }
+        getSharedPreferences(RECENT_PROJECTS_PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_RECENT_PROJECTS, value.toString())
+                .apply();
+    }
+
+    private static boolean containsProject(List<File> projects, File candidate) throws IOException {
+        String path = candidate.getCanonicalPath();
+        for (File project : projects) {
+            if (project.getCanonicalPath().equals(path)) return true;
+        }
+        return false;
     }
 
     private void analyzeProject(final File root) {

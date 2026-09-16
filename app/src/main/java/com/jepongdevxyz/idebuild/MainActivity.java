@@ -672,17 +672,61 @@ public final class MainActivity extends Activity {
             Button tab = new Button(this); tab.setAllCaps(false); String label = (document.isDirty() ? "* " : "") + document.getDisplayName();
             if (document == active) label = "[" + label + "]"; tab.setText(label); tab.setTextSize(11f); tab.setMinHeight(0); tab.setMinimumHeight(0); tab.setPadding(dp(10), dp(4), dp(10), dp(4));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT); params.setMargins(dp(2), dp(2), dp(2), dp(2)); tabBar.addView(tab, params);
-            tab.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { captureActiveEditorState(); editorSession.switchTo(document.getPath()); renderActiveEditor(); }});
+            tab.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
+                captureActiveEditorState();
+                EditorDocument active = editorSession.getActive();
+                if (active != null && active != document && active.isDirty() && isAutosaveEnabled()) autosaveDocumentThenSwitch(active, document.getPath());
+                else { editorSession.switchTo(document.getPath()); renderActiveEditor(); }
+            }});
             tab.setOnLongClickListener(new View.OnLongClickListener() { @Override public boolean onLongClick(View v) { captureActiveEditorState(); requestCloseTab(document); return true; }});
         }
     }
 
     private void requestCloseTab(final EditorDocument document) {
         if (document == null) return; if (!document.isDirty()) { editorSession.close(document.getPath(), true); renderActiveEditor(); return; }
+        if (isAutosaveEnabled()) { autosaveDocumentThenClose(document); return; }
         new AlertDialog.Builder(this).setTitle("Unsaved changes").setMessage("Save changes to " + document.getDisplayName() + " before closing?")
                 .setPositiveButton("Save", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface dialog, int which) { saveDocumentAndClose(document); }})
                 .setNeutralButton("Discard", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface dialog, int which) { editorSession.close(document.getPath(), true); renderActiveEditor(); }})
                 .setNegativeButton("Cancel", null).show();
+    }
+
+    private boolean isAutosaveEnabled() {
+        return EditorSettingsButton.loadEditorSettings(this).isAutosaveEnabled();
+    }
+
+    private void autosaveDocumentThenSwitch(final EditorDocument document, final ProjectPath targetPath) {
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        final DocumentSaveSnapshot snapshot = new DocumentSaveSnapshot(document, document.getPath(), document.getText());
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                if (resolver == null) throw new IOException("Workspace resolver is unavailable");
+                writeUtf8(resolver.resolve(snapshot.path), snapshot.text);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    if (document.getText().equals(snapshot.text)) document.markSaved();
+                    editorSession.switchTo(targetPath);
+                    renderActiveEditor();
+                }});
+                appendConsole("Autosaved: " + snapshot.path.getRelativePath());
+            } catch (Exception e) { appendConsole("AUTOSAVE ERROR: " + e.getMessage()); }
+        }});
+    }
+
+    private void autosaveDocumentThenClose(final EditorDocument document) {
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        final DocumentSaveSnapshot snapshot = new DocumentSaveSnapshot(document, document.getPath(), document.getText());
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                if (resolver == null) throw new IOException("Workspace resolver is unavailable");
+                writeUtf8(resolver.resolve(snapshot.path), snapshot.text);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    if (document.getText().equals(snapshot.text)) document.markSaved();
+                    editorSession.close(document.getPath(), true);
+                    renderActiveEditor();
+                }});
+                appendConsole("Autosaved and closed: " + snapshot.path.getRelativePath());
+            } catch (Exception e) { appendConsole("AUTOSAVE ERROR: " + e.getMessage()); }
+        }});
     }
 
     private void saveDocumentAndClose(final EditorDocument document) {

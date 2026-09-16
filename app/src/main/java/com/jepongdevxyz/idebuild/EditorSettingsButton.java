@@ -26,6 +26,8 @@ public final class EditorSettingsButton extends Button {
     private static final String PREFS_NAME = "devxyz_editor_settings";
     private static final String KEY_FONT_SIZE_SP = "font_size_sp";
     private static final String KEY_WORD_WRAP = "word_wrap";
+    private static final String KEY_TAB_WIDTH = "tab_width";
+    private static final String KEY_AUTOSAVE = "autosave";
 
     public EditorSettingsButton(Context context) { super(context); initialize(); }
     public EditorSettingsButton(Context context, AttributeSet attrs) { super(context, attrs); initialize(); }
@@ -41,15 +43,17 @@ public final class EditorSettingsButton extends Button {
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         post(new Runnable() {
-            @Override public void run() { applyEditorSettings(loadEditorSettings()); }
+            @Override public void run() { applyEditorSettings(loadEditorSettings(getContext())); }
         });
     }
 
-    private EditorSettings loadEditorSettings() {
-        SharedPreferences preferences = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    static EditorSettings loadEditorSettings(Context context) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return new EditorSettings(
                 preferences.getInt(KEY_FONT_SIZE_SP, EditorSettings.DEFAULT_FONT_SIZE_SP),
-                preferences.getBoolean(KEY_WORD_WRAP, EditorSettings.DEFAULT_WORD_WRAP));
+                preferences.getBoolean(KEY_WORD_WRAP, EditorSettings.DEFAULT_WORD_WRAP),
+                preferences.getInt(KEY_TAB_WIDTH, EditorSettings.DEFAULT_TAB_WIDTH),
+                preferences.getBoolean(KEY_AUTOSAVE, EditorSettings.DEFAULT_AUTOSAVE));
     }
 
     private void saveEditorSettings(EditorSettings settings) {
@@ -57,6 +61,8 @@ public final class EditorSettingsButton extends Button {
                 .edit()
                 .putInt(KEY_FONT_SIZE_SP, settings.getFontSizeSp())
                 .putBoolean(KEY_WORD_WRAP, settings.isWordWrap())
+                .putInt(KEY_TAB_WIDTH, settings.getTabWidth())
+                .putBoolean(KEY_AUTOSAVE, settings.isAutosaveEnabled())
                 .apply();
     }
 
@@ -70,7 +76,7 @@ public final class EditorSettingsButton extends Button {
     }
 
     private void showSettingsDialog() {
-        final EditorSettings currentEditor = loadEditorSettings();
+        final EditorSettings currentEditor = loadEditorSettings(getContext());
         final AppAppearanceSettings currentAppearance = AppearanceContext.load(getContext());
         final LinearLayout form = new LinearLayout(getContext());
         form.setOrientation(LinearLayout.VERTICAL);
@@ -90,6 +96,22 @@ public final class EditorSettingsButton extends Button {
         wordWrapInput.setText("Word wrap");
         wordWrapInput.setChecked(currentEditor.isWordWrap());
         form.addView(wordWrapInput, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        final EditText tabWidthInput = new EditText(getContext());
+        tabWidthInput.setHint("Tab width (2-8 spaces)");
+        tabWidthInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        tabWidthInput.setSingleLine(true);
+        tabWidthInput.setText(String.valueOf(currentEditor.getTabWidth()));
+        form.addView(tabWidthInput, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        final CheckBox autosaveInput = new CheckBox(getContext());
+        autosaveInput.setText("Autosave");
+        autosaveInput.setChecked(currentEditor.isAutosaveEnabled());
+        form.addView(autosaveInput, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -119,7 +141,16 @@ public final class EditorSettingsButton extends Button {
                             String raw = fontSizeInput.getText() == null ? "" : fontSizeInput.getText().toString().trim();
                             if (raw.length() > 0) requestedFontSize = Integer.parseInt(raw);
                         } catch (NumberFormatException ignored) { }
-                        EditorSettings editorSettings = new EditorSettings(requestedFontSize, wordWrapInput.isChecked());
+                        int requestedTabWidth = currentEditor.getTabWidth();
+                        try {
+                            String raw = tabWidthInput.getText() == null ? "" : tabWidthInput.getText().toString().trim();
+                            if (raw.length() > 0) requestedTabWidth = Integer.parseInt(raw);
+                        } catch (NumberFormatException ignored) { }
+                        EditorSettings editorSettings = new EditorSettings(
+                                requestedFontSize,
+                                wordWrapInput.isChecked(),
+                                requestedTabWidth,
+                                autosaveInput.isChecked());
                         saveEditorSettings(editorSettings);
                         applyEditorSettings(editorSettings);
 

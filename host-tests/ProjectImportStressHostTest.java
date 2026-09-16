@@ -9,41 +9,53 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * Normal-CI streaming stress test. It expands a 32 MiB project asset without
- * holding the expanded project in memory. The optional manual stress workflow
- * exercises the same code path at 1 GiB class.
+ * Streaming import stress test. Normal CI defaults to 32 MiB. The manual
+ * stress workflow raises devxyz.stress.bytes to a 1 GiB-class expanded asset.
  */
 public final class ProjectImportStressHostTest {
-    private static final long EXPANDED_BYTES = 32L * 1024L * 1024L;
+    private static final long DEFAULT_EXPANDED_BYTES = 32L * 1024L * 1024L;
 
     public static void main(String[] args) throws Exception {
+        long expandedBytes = configuredExpandedBytes();
         File root = Files.createTempDirectory("devxyz-import-stress").toFile();
         File zipFile = new File(root, "stress.zip");
         File projects = new File(root, "projects");
         if (!projects.mkdir()) throw new AssertionError("Could not create projects directory");
         try {
-            createLargeProjectZip(zipFile, EXPANDED_BYTES);
+            createLargeProjectZip(zipFile, expandedBytes);
             final long[] latest = new long[]{0L};
             ProjectImportService.ImportResult result;
             FileInputStream input = new FileInputStream(zipFile);
             try {
                 result = ProjectImportService.importProject(
                         input, projects, "StressProject.zip", 100,
-                        EXPANDED_BYTES + (4L * 1024L * 1024L),
+                        expandedBytes + (4L * 1024L * 1024L),
                         ProjectImportService.NEVER_CANCELLED,
                         new ProjectImportService.ProgressListener() {
-                            @Override public void onProgress(int entries, long expandedBytes) {
-                                latest[0] = expandedBytes;
+                            @Override public void onProgress(int entries, long bytes) {
+                                latest[0] = bytes;
                             }
                         });
             } finally { input.close(); }
 
             File expanded = new File(result.getProjectRoot(), "app/src/main/assets/payload.bin");
             if (!expanded.isFile()) throw new AssertionError("Expanded payload missing");
-            if (expanded.length() != EXPANDED_BYTES) throw new AssertionError("Wrong expanded size: " + expanded.length());
-            if (latest[0] < EXPANDED_BYTES) throw new AssertionError("Progress did not reach payload size: " + latest[0]);
+            if (expanded.length() != expandedBytes) throw new AssertionError("Wrong expanded size: " + expanded.length());
+            if (latest[0] < expandedBytes) throw new AssertionError("Progress did not reach payload size: " + latest[0]);
             System.out.println("PROJECT IMPORT STRESS TEST PASSED: expanded=" + expanded.length());
         } finally { deleteTree(root); }
+    }
+
+    private static long configuredExpandedBytes() {
+        String value = System.getProperty("devxyz.stress.bytes");
+        if (value == null || value.trim().length() == 0) return DEFAULT_EXPANDED_BYTES;
+        long bytes;
+        try { bytes = Long.parseLong(value.trim()); }
+        catch (NumberFormatException invalid) { throw new IllegalArgumentException("Invalid devxyz.stress.bytes", invalid); }
+        if (bytes < 1024L * 1024L || bytes > 2L * 1024L * 1024L * 1024L) {
+            throw new IllegalArgumentException("devxyz.stress.bytes must be between 1 MiB and 2 GiB");
+        }
+        return bytes;
     }
 
     private static void createLargeProjectZip(File zipFile, long expandedBytes) throws Exception {

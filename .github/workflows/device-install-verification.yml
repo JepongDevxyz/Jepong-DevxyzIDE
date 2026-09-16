@@ -162,13 +162,12 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            SIGNED_APK="$(cat signed-apk-path.txt)"
-            test -s "$SIGNED_APK"
+            test -s "$(cat signed-apk-path.txt)"
             adb wait-for-device
             adb shell getprop ro.build.version.sdk | tr -d '\r' | tee device-sdk.txt
             grep -Fx 28 device-sdk.txt
             adb uninstall com.jepongdevxyz.idebuild >/dev/null 2>&1 || true
-            adb install "$SIGNED_APK" | tee device-install.txt
+            adb install "$(cat signed-apk-path.txt)" | tee device-install.txt
             grep -F Success device-install.txt
             adb shell pm list packages | grep -F package:com.jepongdevxyz.idebuild | tee device-package.txt
             adb shell dumpsys package com.jepongdevxyz.idebuild | grep -F versionName=0.6.1-device-install | tee device-version.txt

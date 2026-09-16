@@ -19,7 +19,7 @@ assert "dependencies {\n}" in build, "AIDE edition must not require external Mav
 assert "sourceCompatibility JavaVersion.VERSION_1_7" in build
 assert "compileSdkVersion 28" in build
 assert "com.android.tools.build:gradle:3.2.1" in root_build
-assert "<EditText" in layout and "io.github.rosemoe" not in layout
+assert "com.jepongdevxyz.idebuild.SyntaxEditText" in layout and "io.github.rosemoe" not in layout
 assert "EditText editor" in main and "io.github.rosemoe" not in main
 assert "androidx." not in main
 assert main.count('protected void onDestroy()') == 1
@@ -35,7 +35,7 @@ assert 'stamp_bootstrap.py' in text
 assert 'runtimeButton' in main
 assert 'TerminalBootstrapInstaller.install' in main
 assert '@+id/runtimeButton' in layout
-assert '<EditText' in land_layout
+assert 'com.jepongdevxyz.idebuild.SyntaxEditText' in land_layout
 assert '@+id/runtimeButton' in land_layout
 
 # Project file open/save must resolve a ProjectPath against the trusted root each time.

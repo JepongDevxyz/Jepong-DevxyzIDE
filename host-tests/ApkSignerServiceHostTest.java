@@ -43,7 +43,17 @@ public final class ApkSignerServiceHostTest {
             ApkSigningResult result = ApkSignerService.signAndVerify(
                     signer, input, output, keyStore, "release", storePass, keyPass);
 
-            assertTrue(result.isSuccess());
+            if (!result.isSuccess()) {
+                throw new AssertionError(
+                        "Signing result failed: signExit=" + result.getSignExitCode()
+                                + " verifyExit=" + result.getVerifyExitCode()
+                                + " outputExists=" + output.isFile()
+                                + " outputBytes=" + (output.isFile() ? output.length() : -1L)
+                                + "\nsign stdout:\n" + result.getSignStdout()
+                                + "\nsign stderr:\n" + result.getSignStderr()
+                                + "\nverify stdout:\n" + result.getVerifyStdout()
+                                + "\nverify stderr:\n" + result.getVerifyStderr());
+            }
             assertTrue(output.isFile());
             String allLogs = result.getSignStdout() + result.getSignStderr() + result.getVerifyStdout() + result.getVerifyStderr();
             assertFalse(allLogs.contains(storePass));

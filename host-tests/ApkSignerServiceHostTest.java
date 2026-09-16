@@ -13,9 +13,9 @@ public final class ApkSignerServiceHostTest {
             File signer = new File(root, "apksigner");
             String script = "#!/bin/sh\n" +
                     "set -eu\n" +
-                    "echo store=$DEVXYZ_KS_PASS\n" +
-                    "echo key=$DEVXYZ_KEY_PASS 1>&2\n" +
                     "if [ \"$1\" = sign ]; then\n" +
+                    "  echo store=$DEVXYZ_KS_PASS\n" +
+                    "  echo key=$DEVXYZ_KEY_PASS 1>&2\n" +
                     "  out=\"\"\n" +
                     "  prev=\"\"\n" +
                     "  last=\"\"\n" +
@@ -27,7 +27,10 @@ public final class ApkSignerServiceHostTest {
                     "  cp \"$last\" \"$out\"\n" +
                     "  exit 0\n" +
                     "fi\n" +
-                    "if [ \"$1\" = verify ]; then exit 0; fi\n" +
+                    "if [ \"$1\" = verify ]; then\n" +
+                    "  echo verified\n" +
+                    "  exit 0\n" +
+                    "fi\n" +
                     "exit 2\n";
             write(signer, script);
             if (!signer.setExecutable(true)) throw new AssertionError("Could not mark fake signer executable");
@@ -59,6 +62,7 @@ public final class ApkSignerServiceHostTest {
             assertFalse(allLogs.contains(storePass));
             assertFalse(allLogs.contains(keyPass));
             assertTrue(allLogs.contains("***"));
+            assertTrue(result.getVerifyStdout().contains("verified"));
             System.out.println("APK SIGNER SERVICE HOST TESTS PASSED: 1/1");
         } finally {
             deleteTree(root);

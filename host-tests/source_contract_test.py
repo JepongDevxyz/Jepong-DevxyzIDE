@@ -9,6 +9,7 @@ main = (ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java').re
 manifest = (ROOT/'app/src/main/AndroidManifest.xml').read_text()
 script = ROOT/'runtime-builder/build-devxyz-terminal-runtime.sh'
 settings_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/EditorSettingsButton.java'
+terminal_view_path = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/TerminalButton.java'
 
 # AIDE Test Edition intentionally uses only platform Android widgets/classes.
 assert "dependencies {\n}" in build, "AIDE edition must not require external Maven UI/editor dependencies"
@@ -113,5 +114,16 @@ assert 'confirmProjectSwitch' in main, "Dirty project switches must require an e
 assert 'saveAllBeforeProjectSwitch' in main, "Users must be able to save all dirty tabs before switching projects"
 assert 'loadProjectNow' in main, "Confirmed project switching must be separated from the dirty-state guard"
 assert 'Discard & Switch' in main and 'Save All & Switch' in main, "Project switch dialog must expose safe save/discard choices"
+
+# Terminal UI must execute real device commands through the shared process engine.
+assert '@+id/terminalButton' in layout and '@+id/terminalButton' in land_layout, "Terminal action must exist in portrait and landscape"
+assert terminal_view_path.is_file(), "Terminal UI must live outside MainActivity"
+terminal_view = terminal_view_path.read_text()
+assert 'TerminalCommandPlanner.plan' in terminal_view, "Terminal UI must use the tested shell planner"
+assert 'ProcessEngine.start' in terminal_view, "Terminal UI must execute a real process"
+assert 'onStdout' in terminal_view and 'onStderr' in terminal_view, "Terminal UI must stream real stdout and stderr"
+assert '.cancel()' in terminal_view, "Terminal UI must support stopping a running process"
+assert 'setWorkingDirectory' in terminal_view, "Terminal UI must accept the loaded project as cwd"
+assert 'terminalButton.setWorkingDirectory(projectRoot)' in main, "Loaded project must update terminal working directory"
 
 print("SOURCE CONTRACT TESTS PASSED (AIDE TEST EDITION)")

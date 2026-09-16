@@ -191,8 +191,7 @@ public final class ProjectTemplateGenerator {
                 "    id 'com.android.application'\n" +
                 (kotlin ? "    id 'org.jetbrains.kotlin.android'\n" : "") +
                 "}\n\n" +
-                modernAndroidBlock(applicationId) +
-                (kotlin ? "\nkotlinOptions {\n    jvmTarget = '17'\n}\n" : "") +
+                modernAndroidBlock(applicationId, kotlin) +
                 "\ndependencies {\n" +
                 "    implementation platform('org.jetbrains.kotlin:kotlin-bom:2.0.21')\n" +
                 "    implementation 'androidx.appcompat:appcompat:1.7.0'\n" +
@@ -242,7 +241,7 @@ public final class ProjectTemplateGenerator {
                 "org.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8\n");
     }
 
-    private static String modernAndroidBlock(String applicationId) {
+    private static String modernAndroidBlock(String applicationId, boolean kotlin) {
         return "android {\n" +
                 "    namespace '" + applicationId + "'\n" +
                 "    compileSdk 35\n\n" +
@@ -257,6 +256,7 @@ public final class ProjectTemplateGenerator {
                 "        sourceCompatibility JavaVersion.VERSION_17\n" +
                 "        targetCompatibility JavaVersion.VERSION_17\n" +
                 "    }\n" +
+                (kotlin ? "    kotlinOptions {\n        jvmTarget = '17'\n    }\n" : "") +
                 "}\n";
     }
 

@@ -13,6 +13,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.jepongdevxyz.idebuild.core.capability.Capability;
+import com.jepongdevxyz.idebuild.core.capability.CapabilityRegistry;
+import com.jepongdevxyz.idebuild.core.capability.CapabilityStatus;
 import com.jepongdevxyz.idebuild.core.git.GitResult;
 import com.jepongdevxyz.idebuild.core.git.GitService;
 
@@ -99,8 +102,14 @@ public final class GitButton extends Button {
 
         runAsync(new BackgroundGitOperation() {
             @Override public GitResult run() {
-                boolean available = GitService.isGitAvailable(repository);
-                if (!available) return new GitResult(127, false, 0L, "", "Git executable is unavailable on this runtime.\n");
+                // CapabilityRegistry.git performs the real GitService.isGitAvailable check off the UI thread.
+                Capability capability = CapabilityRegistry.git(repository);
+                if (capability.getStatus() == CapabilityStatus.NEEDS_INSTALL) {
+                    return new GitResult(127, false, 0L, "", capability.getStatus().name() + ": " + capability.getUserMessage() + "\n");
+                }
+                if (!capability.isEnabled()) {
+                    return new GitResult(2, false, 0L, "", capability.getStatus().name() + ": " + capability.getUserMessage() + "\n");
+                }
                 if (!new File(repository, ".git").isDirectory()) return GitService.init(repository);
                 return GitService.status(repository);
             }
@@ -215,6 +224,13 @@ public final class GitButton extends Button {
 
         runAsync(new BackgroundGitOperation() {
             @Override public GitResult run() {
+                Capability capability = CapabilityRegistry.git(projects);
+                if (capability.getStatus() == CapabilityStatus.NEEDS_INSTALL) {
+                    return new GitResult(127, false, 0L, "", capability.getStatus().name() + ": " + capability.getUserMessage() + "\n");
+                }
+                if (!capability.isEnabled()) {
+                    return new GitResult(2, false, 0L, "", capability.getStatus().name() + ": " + capability.getUserMessage() + "\n");
+                }
                 return GitService.cloneRepository(
                         projects,
                         remote,

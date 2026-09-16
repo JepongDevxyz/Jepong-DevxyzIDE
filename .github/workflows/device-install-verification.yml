@@ -62,10 +62,10 @@ jobs:
           if-no-files-found: error
           retention-days: 15
 
-  signed_install:
-    name: Build target API 29 APK and verify signed install
+  signed_build:
+    name: Build and sign target API 29 APK
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -122,14 +122,27 @@ jobs:
             device-apk-signing.txt
           if-no-files-found: error
           retention-days: 15
-      - name: Enable KVM access for Android emulator
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -e /dev/kvm
-          sudo chmod 666 /dev/kvm
-          test -r /dev/kvm
-          test -w /dev/kvm
+
+  signed_install:
+    name: Verify exact signed APK on clean API 28 emulator runner
+    needs: [signed_build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Set up JDK 17 for emulator tooling
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Download exact signed candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: DevxyzIDE-v0.6.1-signed-candidate
+          path: verified-device-artifact
       - name: Install exact signed APK on proven API 28 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -141,7 +154,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -euo pipefail
-            SIGNED_APK="app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk"
+            SIGNED_APK="verified-device-artifact/DevxyzIDE-v0.6.1-installable.apk"
             PACKAGE="com.jepongdevxyz.idebuild"
             test -s "$SIGNED_APK"
             adb wait-for-device
@@ -164,8 +177,8 @@ jobs:
         with:
           name: DevxyzIDE-runtime-failure-diagnostics
           path: |
-            device-apk-badging.txt
-            device-apk-signing.txt
+            verified-device-artifact/device-apk-badging.txt
+            verified-device-artifact/device-apk-signing.txt
             device-sdk.txt
             device-install.txt
             device-package.txt
@@ -181,9 +194,9 @@ jobs:
         with:
           name: DevxyzIDE-v0.6.1-api29-installable
           path: |
-            app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
-            device-apk-badging.txt
-            device-apk-signing.txt
+            verified-device-artifact/DevxyzIDE-v0.6.1-installable.apk
+            verified-device-artifact/device-apk-badging.txt
+            verified-device-artifact/device-apk-signing.txt
             device-sdk.txt
             device-install.txt
             device-package.txt

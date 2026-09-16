@@ -55,10 +55,31 @@ public final class GitServiceHostTest {
             assertOk(GitService.stage(repo, "hello.txt"));
             assertOk(GitService.commit(repo, "Change", "Devxyz Test", "devxyz@example.test"));
             assertOk(GitService.push(repo, "origin", "feature/test", Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
+            assertOk(GitService.run(remote,
+                    Collections.singletonList("symbolic-ref"),
+                    Collections.singletonList("HEAD"),
+                    "refs/heads/feature/test"));
 
             File clone = new File(root, "clone");
             assertOk(GitService.cloneRepository(root, remote.getAbsolutePath(), clone.getAbsolutePath(), Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
             assertTrue(new File(clone, ".git").isDirectory());
+            assertContains(GitService.currentBranch(clone).getStdout(), "feature/test");
+
+            write(new File(clone, "upstream.txt"), "from clone\n");
+            assertOk(GitService.stage(clone, "upstream.txt"));
+            assertOk(GitService.commit(clone, "Upstream change", "Devxyz Test", "devxyz@example.test"));
+            assertOk(GitService.push(clone, "origin", "feature/test", Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
+
+            assertOk(GitService.fetch(repo, "origin", Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
+            GitResult remoteHead = GitService.run(repo,
+                    Collections.singletonList("rev-parse"),
+                    Collections.singletonList("origin/feature/test"),
+                    "");
+            assertOk(remoteHead);
+            assertTrue(remoteHead.getStdout().trim().length() >= 7);
+            assertOk(GitService.pull(repo, "origin", "feature/test", Collections.<String, String>emptyMap(), Collections.<String>emptyList()));
+            assertTrue(new File(repo, "upstream.txt").isFile());
+            assertContains(new String(Files.readAllBytes(new File(repo, "upstream.txt").toPath()), StandardCharsets.UTF_8), "from clone");
             passed++;
 
             System.out.println("GIT SERVICE HOST TESTS PASSED: " + passed + "/1");

@@ -10,8 +10,9 @@ public final class ProjectTemplateGeneratorHostTest {
     public static void main(String[] args) throws Exception {
         createsClassicJavaProject();
         createsModernAndroidxProject();
+        createsModernAndroidxKotlinProject();
         rejectsUnsafeNamesAndPackages();
-        System.out.println("PROJECT TEMPLATE GENERATOR HOST TESTS PASSED: " + passed + "/3");
+        System.out.println("PROJECT TEMPLATE GENERATOR HOST TESTS PASSED: " + passed + "/4");
     }
 
     private static void createsClassicJavaProject() throws Exception {
@@ -57,6 +58,30 @@ public final class ProjectTemplateGeneratorHostTest {
             assertContains(appGradle, "androidx.appcompat:appcompat");
             assertContains(activity, "androidx.appcompat.app.AppCompatActivity");
             assertNotContains(manifest, "package=\"");
+            passed++;
+        } finally {
+            deleteTree(parent);
+        }
+    }
+
+    private static void createsModernAndroidxKotlinProject() throws Exception {
+        File parent = Files.createTempDirectory("devxyz-kotlin-template").toFile();
+        try {
+            File root = ProjectTemplateGenerator.create(
+                    parent,
+                    "Hello Kotlin",
+                    "com.example.kotlinapp",
+                    ProjectTemplateGenerator.Template.MODERN_ANDROIDX_KOTLIN);
+            String appGradle = read(new File(root, "app/build.gradle"));
+            String rootGradle = read(new File(root, "build.gradle"));
+            String activity = read(new File(root, "app/src/main/kotlin/com/example/kotlinapp/MainActivity.kt"));
+            assertContains(rootGradle, "org.jetbrains.kotlin.android");
+            assertContains(rootGradle, "2.0.21");
+            assertContains(appGradle, "id 'org.jetbrains.kotlin.android'");
+            assertContains(appGradle, "namespace 'com.example.kotlinapp'");
+            assertContains(appGradle, "compileSdk 35");
+            assertContains(activity, "class MainActivity : AppCompatActivity()");
+            assertContains(activity, "override fun onCreate");
             passed++;
         } finally {
             deleteTree(parent);

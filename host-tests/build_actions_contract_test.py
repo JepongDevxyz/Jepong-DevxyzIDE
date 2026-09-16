@@ -4,6 +4,7 @@ ROOT = Path(__file__).resolve().parents[1]
 portrait = (ROOT/'app/src/main/res/layout/activity_main.xml').read_text()
 landscape = (ROOT/'app/src/main/res/layout-land/activity_main.xml').read_text()
 button = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/BuildActionsButton.java'
+runner = ROOT/'app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java'
 
 assert button.is_file(), 'Advanced build actions must be implemented in a modular control'
 text = button.read_text()
@@ -17,5 +18,10 @@ assert 'BuildRunner.BuildHandle' in text and '.cancel()' in text
 assert 'saveAllButton' in text, 'Artifact builds must not silently ignore dirty editor tabs'
 assert '@+id/buildActionsButton' in portrait
 assert '@+id/buildActionsButton' in landscape
+
+runner_text = runner.read_text()
+assert 'BuildOutputScanner.scan' in runner_text, 'Successful Gradle sessions must scan real APK/AAB outputs'
+assert '.describe()' in runner_text, 'Build session output must expose artifact variant, size, modified time, and path'
+assert 'Build artifacts (' in runner_text, 'Build session must clearly label detected artifacts'
 
 print('BUILD ACTIONS CONTRACT TESTS PASSED')

@@ -131,9 +131,108 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  templates:
+    name: Generate and build DevxyzIDE Java/Kotlin samples
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK 35 packages
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compile production template generator utility
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf generated-ci
+          mkdir -p generated-ci/classes generated-ci/projects
+          javac -d generated-ci/classes \
+            app/src/main/java/com/jepongdevxyz/idebuild/core/build/ProjectTemplateGenerator.java \
+            host-tests/GenerateTemplateProject.java
+
+      - name: Generate Java and Kotlin sample projects using production code
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -cp generated-ci/classes GenerateTemplateProject \
+            generated-ci/projects java com.jepongdevxyz.devxyzsamplejava
+          java -cp generated-ci/classes GenerateTemplateProject \
+            generated-ci/projects kotlin com.jepongdevxyz.devxyzsamplekotlin
+          test -f generated-ci/projects/DevxyzJavaSample/app/build.gradle
+          test -f generated-ci/projects/DevxyzKotlinSample/app/build.gradle
+          test -f generated-ci/projects/DevxyzKotlinSample/app/src/main/kotlin/com/jepongdevxyz/devxyzsamplekotlin/MainActivity.kt
+
+      - name: Build generated Java sample
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle -p generated-ci/projects/DevxyzJavaSample \
+            --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee generated-java-build.log
+
+      - name: Build generated Kotlin sample
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle -p generated-ci/projects/DevxyzKotlinSample \
+            --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee generated-kotlin-build.log
+
+      - name: Validate generated sample APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAVA_APK="generated-ci/projects/DevxyzJavaSample/app/build/outputs/apk/debug/app-debug.apk"
+          KOTLIN_APK="generated-ci/projects/DevxyzKotlinSample/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$JAVA_APK"
+          test -s "$KOTLIN_APK"
+          unzip -t "$JAVA_APK"
+          unzip -t "$KOTLIN_APK"
+          "${ANDROID_SDK_ROOT}/build-tools/35.0.0/aapt" dump badging "$JAVA_APK" | tee generated-java-badging.txt
+          "${ANDROID_SDK_ROOT}/build-tools/35.0.0/aapt" dump badging "$KOTLIN_APK" | tee generated-kotlin-badging.txt
+          grep -F "package: name='com.jepongdevxyz.devxyzsamplejava'" generated-java-badging.txt
+          grep -F "package: name='com.jepongdevxyz.devxyzsamplekotlin'" generated-kotlin-badging.txt
+
+      - name: Upload generated sample APKs and build logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevxyzIDE-generated-samples
+          path: |
+            generated-ci/projects/DevxyzJavaSample/app/build/outputs/apk/debug/app-debug.apk
+            generated-ci/projects/DevxyzKotlinSample/app/build/outputs/apk/debug/app-debug.apk
+            generated-java-build.log
+            generated-kotlin-build.log
+            generated-java-badging.txt
+            generated-kotlin-badging.txt
+          if-no-files-found: error
+          retention-days: 14
+
   emulator:
     name: Install and launch on Android emulator
-    needs: build
+    needs: [build, templates]
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -152,13 +251,19 @@ jobs:
         with:
           packages: platform-tools
 
-      - name: Download built APK
+      - name: Download built DevxyzIDE APK
         uses: actions/download-artifact@v4
         with:
           name: DevxyzIDE-v0.6-debug-apk
           path: verified-artifact
 
-      - name: Boot API 28 emulator, install APK, and launch DevxyzIDE
+      - name: Download generated sample APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: DevxyzIDE-generated-samples
+          path: generated-samples
+
+      - name: Boot API 28 emulator, install APKs, and launch DevxyzIDE plus generated samples
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 28
@@ -169,12 +274,34 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -e
-            test -s "$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
-            echo "Installing APK from: $(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
+            DEVXYZ_APK="$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
+            JAVA_APK="$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
+            KOTLIN_APK="$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
+            test -s "$DEVXYZ_APK"
+            test -s "$JAVA_APK"
+            test -s "$KOTLIN_APK"
             adb wait-for-device
-            adb install -r "$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
+
+            echo "Installing DevxyzIDE: $DEVXYZ_APK"
+            adb install -r "$DEVXYZ_APK"
             adb shell pm list packages | grep -F "package:com.jepongdevxyz.idebuild"
             adb shell monkey -p com.jepongdevxyz.idebuild -c android.intent.category.LAUNCHER 1
-            sleep 5
+            sleep 3
             adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.idebuild"
             adb shell am force-stop com.jepongdevxyz.idebuild
+
+            echo "Installing generated Java sample: $JAVA_APK"
+            adb install -r "$JAVA_APK"
+            adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsamplejava"
+            adb shell monkey -p com.jepongdevxyz.devxyzsamplejava -c android.intent.category.LAUNCHER 1
+            sleep 3
+            adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.devxyzsamplejava"
+            adb shell am force-stop com.jepongdevxyz.devxyzsamplejava
+
+            echo "Installing generated Kotlin sample: $KOTLIN_APK"
+            adb install -r "$KOTLIN_APK"
+            adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsamplekotlin"
+            adb shell monkey -p com.jepongdevxyz.devxyzsamplekotlin -c android.intent.category.LAUNCHER 1
+            sleep 3
+            adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.devxyzsamplekotlin"
+            adb shell am force-stop com.jepongdevxyz.devxyzsamplekotlin

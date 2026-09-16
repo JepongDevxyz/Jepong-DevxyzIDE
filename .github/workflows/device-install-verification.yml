@@ -9,20 +9,10 @@ permissions:
   contents: read
 
 jobs:
-  signed_device_install:
-    name: Build signed APK and verify API 19/29
+  api19_compatibility:
+    name: Verify API 19 compatibility contract
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - api: 19
-            arch: x86
-            target: default
-          - api: 29
-            arch: x86_64
-            target: google_apis
+    timeout-minutes: 25
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -55,14 +45,71 @@ jobs:
         with:
           gradle-version: '4.6'
 
-      - name: Build APK
-        shell: bash
-        run: gradle --no-daemon --stacktrace clean assembleDebug
-
-      - name: Sign exact user-delivery APK
+      - name: Build APK and verify API 19 metadata
         shell: bash
         run: |
           set -euo pipefail
+          gradle --no-daemon --stacktrace clean assembleDebug
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          unzip -t "$APK"
+          "${ANDROID_SDK_ROOT}/build-tools/29.0.3/aapt" dump badging "$APK" | tee api19-apk-badging.txt
+          grep -F "package: name='com.jepongdevxyz.idebuild' versionCode='7' versionName='0.6.1-device-install'" api19-apk-badging.txt
+          grep -F "sdkVersion:'19'" api19-apk-badging.txt
+          grep -F "targetSdkVersion:'29'" api19-apk-badging.txt
+          grep -F "launchable-activity: name='com.jepongdevxyz.idebuild.SplashActivity'" api19-apk-badging.txt
+
+      - name: Upload API 19 compatibility evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevxyzIDE-api19-compatibility
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            api19-apk-badging.txt
+          if-no-files-found: error
+          retention-days: 15
+
+  signed_api29_install:
+    name: Build signed APK and verify API 29 install
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 for Android SDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install build SDK and API 29 emulator image
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.3" "system-images;android-29;google_apis;x86_64"
+
+      - name: Set up JDK 8 for legacy Gradle
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '8'
+
+      - name: Set up Gradle 4.6
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '4.6'
+
+      - name: Build and sign exact user-delivery APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace clean assembleDebug
           RAW="app/build/outputs/apk/debug/app-debug.apk"
           SIGNED_APK="app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk"
           KEYSTORE="${RUNNER_TEMP}/devxyz-device-install.jks"
@@ -85,12 +132,14 @@ jobs:
           rm -f "$KEYSTORE"
           unset DEVXYZ_CI_KS_PASS
 
-      - name: Install exact signed APK on API ${{ matrix.api }} emulator
+      - name: Install exact signed APK on API 29 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ matrix.api }}
-          arch: ${{ matrix.arch }}
-          target: ${{ matrix.target }}
+          api-level: 29
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          emulator-boot-timeout: 900
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -no-metrics
           script: |
@@ -106,12 +155,12 @@ jobs:
             adb shell am start -W -n "$PACKAGE/$ACTIVITY"
             sleep 3
             adb shell dumpsys package "$PACKAGE" | grep -F "versionName=0.6.1-device-install"
+            adb shell pidof "$PACKAGE" | grep -E '[0-9]+'
 
       - name: Upload exact verified APK
-        if: matrix.api == 29
         uses: actions/upload-artifact@v4
         with:
-          name: DevxyzIDE-v0.6.1-api19-29-installable
+          name: DevxyzIDE-v0.6.1-api29-installable
           path: |
             app/build/outputs/apk/debug/DevxyzIDE-v0.6.1-installable.apk
             device-apk-badging.txt

@@ -7,6 +7,7 @@
     <string name="canceling_import">Cancelling…</string>
     <string name="backup_project">Backup ZIP</string>
     <string name="toolchains">Toolchains</string>
+    <string name="sdk_manager">SDK Manager</string>
     <string name="runtime_bootstrap">Runtime</string>
     <string name="terminal">Terminal</string>
     <string name="git">Git</string>

@@ -6,13 +6,16 @@ import java.io.File;
 public final class GenerateTemplateProject {
     public static void main(String[] args) throws Exception {
         if (args.length != 3) {
-            throw new IllegalArgumentException("Usage: GenerateTemplateProject <parent> <java|kotlin> <applicationId>");
+            throw new IllegalArgumentException("Usage: GenerateTemplateProject <parent> <classic|java|kotlin> <applicationId>");
         }
         File parent = new File(args[0]);
         if (!parent.isDirectory() && !parent.mkdirs()) throw new IllegalStateException("Could not create output parent");
         ProjectTemplateGenerator.Template template;
         String projectName;
-        if ("java".equals(args[1])) {
+        if ("classic".equals(args[1])) {
+            template = ProjectTemplateGenerator.Template.CLASSIC_JAVA;
+            projectName = "DevxyzClassicJavaSample";
+        } else if ("java".equals(args[1])) {
             template = ProjectTemplateGenerator.Template.MODERN_ANDROIDX_JAVA;
             projectName = "DevxyzJavaSample";
         } else if ("kotlin".equals(args[1])) {

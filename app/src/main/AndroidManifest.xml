@@ -19,6 +19,11 @@
             android:grantUriPermissions="true" />
 
         <activity
+            android:name=".ApkSigningActivity"
+            android:screenOrientation="unspecified"
+            android:exported="false" />
+
+        <activity
             android:name=".MainActivity"
             android:screenOrientation="unspecified"
             android:exported="false" />

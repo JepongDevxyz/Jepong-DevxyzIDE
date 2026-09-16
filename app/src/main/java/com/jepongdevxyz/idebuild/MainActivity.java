@@ -378,9 +378,62 @@ public final class MainActivity extends Activity {
     }
 
     private void loadProject(File root) {
+        if (root == null) return;
+        captureActiveEditorState();
+        if (editorSession.hasDirtyDocuments()) {
+            confirmProjectSwitch(root);
+            return;
+        }
+        loadProjectNow(root);
+    }
+
+    private void confirmProjectSwitch(final File root) {
+        new AlertDialog.Builder(this)
+                .setTitle("Unsaved changes")
+                .setMessage("Save open files before switching projects?")
+                .setPositiveButton("Save All & Switch", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) { saveAllBeforeProjectSwitch(root); }
+                })
+                .setNeutralButton("Discard & Switch", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) { loadProjectNow(root); }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void saveAllBeforeProjectSwitch(final File root) {
+        captureActiveEditorState();
+        final WorkspacePathResolver resolver = workspacePathResolver;
+        final List<DocumentSaveSnapshot> snapshots = snapshotOpenDocuments();
+        if (resolver == null) {
+            appendConsole("PROJECT SWITCH ERROR: Workspace resolver is unavailable");
+            return;
+        }
+        editor.setEnabled(false);
+        saveAllButton.setEnabled(false);
+        saveButton.setEnabled(false);
+        io.execute(new Runnable() { @Override public void run() {
+            try {
+                writeSnapshots(snapshots, resolver);
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    markSnapshotsSaved(snapshots);
+                    appendConsole("SAVE ALL: " + snapshots.size() + " open file(s) saved before project switch.");
+                    loadProjectNow(root);
+                }});
+            } catch (Exception e) {
+                appendConsole("PROJECT SWITCH SAVE ERROR: " + e.getMessage());
+                runOnUiThread(new Runnable() { @Override public void run() {
+                    editor.setEnabled(true);
+                    updateEditorButtons();
+                }});
+            }
+        }});
+    }
+
+    private void loadProjectNow(File root) {
         final File canonicalRoot; final WorkspacePathResolver resolver;
         try { canonicalRoot = root.getCanonicalFile(); resolver = new WorkspacePathResolver(canonicalRoot, PROJECT_BACKEND_ID); }
-        catch (IOException e) { appendConsole("PROJECT ERROR: " + e.getMessage()); return; }
+        catch (IOException e) { editor.setEnabled(true); appendConsole("PROJECT ERROR: " + e.getMessage()); return; }
         cancelActiveProjectSearch();
         editorSession.closeAll(true);
         buildProblems.clear();
@@ -390,6 +443,7 @@ public final class MainActivity extends Activity {
         fileService = new ProjectFileService(resolver, PROJECT_BACKEND_ID);
         currentDirectory = ProjectPath.of(PROJECT_BACKEND_ID, "");
         currentPath = null; lastBuiltApk = null;
+        editor.setEnabled(true);
         updateProjectPathLabel();
         backupButton.setEnabled(true); newFileButton.setEnabled(true); newFolderButton.setEnabled(true);
         projectSearchButton.setEnabled(true); buildButton.setEnabled(true); installButton.setEnabled(false);

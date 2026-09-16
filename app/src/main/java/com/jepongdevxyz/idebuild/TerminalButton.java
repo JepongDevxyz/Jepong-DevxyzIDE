@@ -14,6 +14,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.jepongdevxyz.idebuild.core.capability.Capability;
+import com.jepongdevxyz.idebuild.core.capability.CapabilityRegistry;
+import com.jepongdevxyz.idebuild.core.capability.CapabilityStatus;
 import com.jepongdevxyz.idebuild.core.log.BoundedLogBuffer;
 import com.jepongdevxyz.idebuild.core.process.ProcessEngine;
 import com.jepongdevxyz.idebuild.core.process.ProcessRequest;
@@ -111,7 +114,9 @@ public final class TerminalButton extends Button {
 
         final TextView shellLabel = new TextView(getContext());
         shellLabel.setTextSize(11f);
-        shellLabel.setText(describeTerminalContext());
+        final Capability terminalCapability = CapabilityRegistry.terminal(getContext().getFilesDir());
+        shellLabel.setText(describeTerminalContext() + "\nState: "
+                + terminalCapability.getStatus().name() + " - " + terminalCapability.getUserMessage());
         root.addView(shellLabel, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -145,6 +150,7 @@ public final class TerminalButton extends Button {
 
         final Button run = new Button(getContext());
         run.setText("Run");
+        run.setEnabled(terminalCapability.getStatus() != CapabilityStatus.UNAVAILABLE);
         final Button stop = new Button(getContext());
         stop.setText("Stop");
         stop.setEnabled(false);

@@ -85,9 +85,13 @@ public final class GitButton extends Button {
         final LinearLayout row2 = actionRow();
         final Button commit = actionButton("Commit", row2);
         final Button branches = actionButton("Branches", row2);
-        final Button pull = actionButton("Pull", row2);
-        final Button push = actionButton("Push", row2);
         root.addView(row2);
+
+        final LinearLayout row3 = actionRow();
+        final Button fetch = actionButton("Fetch", row3);
+        final Button pull = actionButton("Pull", row3);
+        final Button push = actionButton("Push", row3);
+        root.addView(row3);
 
         final AlertDialog dialog = new AlertDialog.Builder(getContext())
                 .setTitle("Git")
@@ -96,7 +100,7 @@ public final class GitButton extends Button {
                 .create();
         dialog.show();
 
-        final Button[] actions = new Button[]{refresh, diff, stage, unstage, commit, branches, pull, push};
+        final Button[] actions = new Button[]{refresh, diff, stage, unstage, commit, branches, fetch, pull, push};
         setEnabled(actions, false);
         append(output, scroll, "Checking Git availability...");
 
@@ -154,6 +158,16 @@ public final class GitButton extends Button {
 
         branches.setOnClickListener(new OnClickListener() {
             @Override public void onClick(View view) { showBranchDialog(repository, output, scroll); }
+        });
+
+        fetch.setOnClickListener(new OnClickListener() {
+            @Override public void onClick(View view) {
+                perform("git fetch --prune origin", output, scroll, new BackgroundGitOperation() {
+                    @Override public GitResult run() {
+                        return GitService.fetch(repository, "origin", Collections.<String, String>emptyMap(), Collections.<String>emptyList());
+                    }
+                });
+            }
         });
 
         pull.setOnClickListener(new OnClickListener() {

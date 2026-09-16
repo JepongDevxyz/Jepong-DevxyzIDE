@@ -46,6 +46,18 @@ public final class BuildRunner {
         return runBuild(projectRoot, appFilesDir, "assembleDebug", false, listener);
     }
 
+    public static File findGradleExecutable(File projectRoot, File appFilesDir) {
+        try {
+            ProjectRequirements requirements = ProjectAnalyzer.analyze(projectRoot);
+            File wrapper = new File(projectRoot, "gradlew");
+            if (requirements.isWrapperComplete() && wrapper.isFile()) return wrapper;
+            String minimumInternalGradle = com.jepongdevxyz.idebuild.core.build.GradleCompatibility.minimumGradleForAgp(requirements.getAgpVersion());
+            return com.jepongdevxyz.idebuild.core.toolchain.RuntimeLayout.findGradleExecutable(appFilesDir, minimumInternalGradle);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     public static BuildHandle runBuild(final File projectRoot,
                                        final File appFilesDir,
                                        final String task,

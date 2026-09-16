@@ -3,6 +3,8 @@
     <string name="edition_label">AIDE Test Edition · v0.6.0</string>
     <string name="create_project">New Project</string>
     <string name="import_zip">Import ZIP</string>
+    <string name="cancel_import">Cancel Import</string>
+    <string name="canceling_import">Cancelling…</string>
     <string name="backup_project">Backup ZIP</string>
     <string name="toolchains">Toolchains</string>
     <string name="runtime_bootstrap">Runtime</string>

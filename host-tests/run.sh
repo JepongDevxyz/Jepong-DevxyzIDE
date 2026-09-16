@@ -52,6 +52,7 @@ java -cp "$OUT" ApkSignerLocatorHostTest
 java -cp "$OUT" ResourceIndexServiceHostTest
 java -cp "$OUT" SqlQueryGuardHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
+python3 "$ROOT/host-tests/developer_tools_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
 python3 "$ROOT/host-tests/bootstrap_stamp_test.py"
 python3 "$ROOT/host-tests/runtime_builder_contract_test.py"

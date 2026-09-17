@@ -69,7 +69,7 @@ require_ui devxyz-files.xml "PROJECT EXPLORER"
 # API 28 CI emulator is configured at 1080x1920; tap the five bottom navigation cells.
 tap_nav 324 search "SEARCH"
 tap_nav 540 git "SOURCE CONTROL"
-# UiAutomator XML escapes the ampersand in this heading.
+# Expected surface: BUILD & RUN. UiAutomator XML escapes the ampersand in this heading.
 tap_nav 756 build "BUILD &amp; RUN"
 tap_nav 972 more "SETTINGS & RUNTIME"
 tap_nav 108 files "PROJECT EXPLORER"

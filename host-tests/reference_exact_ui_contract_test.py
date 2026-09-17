@@ -6,7 +6,7 @@ colors = (ROOT / 'app/src/main/res/values/colors.xml').read_text()
 
 for token in ('#050A12', '#091321', '#00C8FF'):
     assert token in colors
-for view_id in ('projectPane', 'editorPane', 'workspace_build_tools', 'workspace_more', 'bottomNavigation'):
+for view_id in ('projectPane', 'editorPane', 'workspace_search', 'workspace_git', 'workspace_build_tools', 'workspace_more', 'bottomNavigation'):
     assert ('@+id/' + view_id) in portrait
 for label in ('PROJECT EXPLORER', 'Code', 'Terminal', 'Log', 'Problems', 'BUILD &amp; RUN', 'BUILT-IN TOOLS', 'SETTINGS'):
     assert label in portrait, 'missing reference label: ' + label
@@ -14,16 +14,14 @@ assert 'android:text="+ File"' not in portrait, 'oversized legacy + File button 
 assert 'android:text="+ Folder"' not in portrait, 'oversized legacy + Folder button still visible'
 assert 'android:layout_height="52dp"' in portrait, 'compact reference bottom navigation height missing'
 assert '@+id/buildSurfaceButton' not in portrait, 'inert buildSurfaceButton must not replace authoritative buildButton'
+assert '<LinearLayout android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone">' not in portrait, 'hidden compatibility holder must not exist'
 
-# Core Build/Tools/Settings actions must exist before the final hidden compatibility holder.
-hidden_marker = '<LinearLayout android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone">'
-hidden_at = portrait.rfind(hidden_marker)
-assert hidden_at >= 0, 'hidden compatibility holder missing'
-for control in ('buildButton', 'installButton', 'buildActionsButton', 'terminalButton', 'gitButton',
-                'signApkButton', 'developerToolsButton', 'projectSettingsButton', 'settingsButton'):
+for control in ('createProjectButton', 'newFileButton', 'newFolderButton', 'recentProjectsButton', 'importButton',
+                'searchButton', 'projectSearchButton', 'saveButton', 'saveAllButton', 'completionButton',
+                'editorActionsButton', 'problemsButton', 'buildButton', 'installButton', 'buildActionsButton',
+                'terminalButton', 'gitButton', 'signApkButton', 'developerToolsButton', 'projectSettingsButton',
+                'settingsButton', 'backupButton', 'toolchainButton', 'sdkManagerButton', 'runtimeButton'):
     token = 'android:id="@+id/%s"' % control
-    pos = portrait.find(token)
-    assert pos >= 0 and pos < hidden_at, '%s must be a visible authoritative control' % control
-    assert portrait.find(token, pos + 1) < 0, '%s must only exist once' % control
+    assert portrait.count(token) == 1, '%s must exist exactly once as an authoritative control' % control
 
 print('reference exact UI contract: OK')

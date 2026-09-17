@@ -22,17 +22,13 @@ jobs:
         shell: python {0}
         run: |
           from pathlib import Path
+          import re
           p = Path('app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java')
           s = p.read_text()
           if 'import android.os.Build;' not in s:
-              s = s.replace('import android.os.Bundle;\n', 'import android.os.Build;\nimport android.os.Bundle;\n')
-          old = '''    private void startFolderPicker() {
-              Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-              intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-              startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
-          }
-          '''
-          new = '''    private void startFolderPicker() {
+              s = s.replace('import android.os.Bundle;\n', 'import android.os.Build;\nimport android.os.Bundle;\n', 1)
+          pattern = r'    private void startFolderPicker\(\) \{.*?\n    \}\n(?=    private void chooseToolchainPack)'
+          replacement = '''    private void startFolderPicker() {
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                   Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
                   intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
@@ -42,9 +38,9 @@ jobs:
               }
           }
           '''
-          if old not in s:
-              raise SystemExit('Expected startFolderPicker block not found; refusing blind patch')
-          s = s.replace(old, new, 1)
+          s, count = re.subn(pattern, replacement, s, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit('Expected startFolderPicker method not found; refusing blind patch')
           p.write_text(s)
           Path('.github/workflows/one-time-saf-api21-fix.yml').unlink()
       - name: Verify exact contract before commit

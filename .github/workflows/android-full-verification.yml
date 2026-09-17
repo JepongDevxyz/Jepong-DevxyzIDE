@@ -15,56 +15,132 @@ jobs:
     name: Build APK with Android SDK 28
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
       - name: Set up JDK 17 for Android SDK tools and host tests
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-
       - name: Install Android SDK packages
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-28" "build-tools;28.0.3"
-
       - name: Run host tests
         run: bash host-tests/run.sh
-
       - name: Set up JDK 8 for legacy Android Gradle Plugin
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '8'
-
       - name: Set up Gradle 4.6
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '4.6'
-
       - name: Build debug APK
         run: gradle --no-daemon clean assembleDebug
-
-      - name: Verify APK exists
-        run: test -s app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Verify APK package
+      - name: Verify APK exists and package metadata
+        shell: bash
         run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          unzip -t "$APK"
           AAPT="$ANDROID_HOME/build-tools/28.0.3/aapt"
-          "$AAPT" dump badging app/build/outputs/apk/debug/app-debug.apk | grep -F "package: name='com.jepongdevxyz.idebuild'"
-
+          "$AAPT" dump badging "$APK" | tee apk-badging.txt
+          grep -F "package: name='com.jepongdevxyz.idebuild'" apk-badging.txt
+          grep -F "sdkVersion:'19'" apk-badging.txt
+          grep -F "targetSdkVersion:'29'" apk-badging.txt
       - name: Upload verified debug APK
         uses: actions/upload-artifact@v4
         with:
           name: DevxyzIDE-reference-ui-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            apk-badging.txt
           if-no-files-found: error
+
+  emulator:
+    name: Install and launch on Android emulator
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Download verified APK
+        uses: actions/download-artifact@v4
+        with:
+          name: DevxyzIDE-reference-ui-debug-apk
+          path: verified-artifact
+      - name: Verify app starts and remains alive on API 28
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 28
+          arch: x86_64
+          target: default
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
+          script: |
+            set -euo pipefail
+            APK="$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
+            test -s "$APK"
+            adb wait-for-device
+            adb install -r "$APK" | tee emulator-install.txt
+            grep -Fx Success emulator-install.txt
+            adb shell am start -W -n com.jepongdevxyz.idebuild/com.jepongdevxyz.idebuild.SplashActivity | tee emulator-launch.txt
+            grep -F 'Status: ok' emulator-launch.txt
+            sleep 6
+            adb shell ps -A | grep -F com.jepongdevxyz.idebuild
+
+  release_bundle:
+    name: Package verified source ZIP
+    needs: [emulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact verified source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Package exact verified source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/CAPABILITY_MATRIX.md
+          test -s docs/VERIFICATION_REPORT.md
+          cat > VERIFICATION_METADATA.txt <<EOF
+          repository=${GITHUB_REPOSITORY}
+          commit=${GITHUB_SHA}
+          workflow=${GITHUB_WORKFLOW}
+          run_id=${GITHUB_RUN_ID}
+          verified_after=emulator
+          EOF
+          git archive --format=zip --output=DevxyzIDE-verified-source.zip HEAD
+          zip -q DevxyzIDE-verified-source.zip VERIFICATION_METADATA.txt
+          unzip -t DevxyzIDE-verified-source.zip
+          sha256sum DevxyzIDE-verified-source.zip | tee DevxyzIDE-verified-source.zip.sha256
+      - name: Upload verified source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevxyzIDE-verified-source
+          path: |
+            DevxyzIDE-verified-source.zip
+            DevxyzIDE-verified-source.zip.sha256
+            VERIFICATION_METADATA.txt
+          if-no-files-found: error
+          retention-days: 15

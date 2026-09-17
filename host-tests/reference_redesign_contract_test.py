@@ -20,8 +20,10 @@ assert "#050A12" in COLORS or "#060B14" in COLORS
 assert "#00B8FF" in COLORS or "#00C8FF" in COLORS or "#149CFF" in COLORS
 
 # Landscape remains deliberately dark and retains the real explorer/editor split.
-assert "project_pane" in LAND
-assert "editor_pane" in LAND
+# Keep the established addressable pane IDs while the nested workspace IDs serve the v2 shell.
+assert "projectPane" in LAND
+assert "editorPane" in LAND
+assert "workspace_editor" in LAND
 assert "@color/devxyz_bg" in LAND or "@color/devxyz_surface" in LAND
 
 # Import must remain API-safe and must not finish the Activity on picker/import errors.

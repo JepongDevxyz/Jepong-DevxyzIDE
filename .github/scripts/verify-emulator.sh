@@ -39,8 +39,15 @@ tap_nav() {
   label="$2"
   expected="$3"
   adb shell input tap "$x" 1745
-  sleep 1
-  dump_ui "devxyz-${label}.xml"
+  # UiAutomator can briefly return a stale/null hierarchy while the surface
+  # changes. Poll the real hierarchy until the requested surface is visible.
+  i=0
+  while [ "$i" -lt 10 ]; do
+    dump_ui "devxyz-${label}.xml" || true
+    if grep -F "$expected" "devxyz-${label}.xml" >/dev/null 2>&1; then return 0; fi
+    i=$((i + 1))
+    sleep 1
+  done
   require_ui "devxyz-${label}.xml" "$expected"
 }
 

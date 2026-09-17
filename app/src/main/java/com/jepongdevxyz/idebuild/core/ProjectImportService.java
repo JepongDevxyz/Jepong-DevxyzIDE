@@ -7,8 +7,8 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 /**
- * Imports a project ZIP through a disposable staging directory and only exposes
- * the final project after extraction and project-root detection succeed.
+ * Imports projects through a disposable staging directory and only exposes the
+ * final project after extraction/copy and project-root validation succeed.
  */
 public final class ProjectImportService {
     public interface CancellationSignal {
@@ -26,6 +26,15 @@ public final class ProjectImportService {
      */
     public interface StorageProbe {
         void check(File destinationRoot, long expandedBytes) throws IOException;
+    }
+
+    /**
+     * Writes one supported project source into the service-owned staging
+     * directory. The return value is the project-root path relative to staging,
+     * or an empty string when staging itself is the project root.
+     */
+    public interface StagingWriter {
+        String write(File stagingDirectory, CancellationSignal cancellation) throws IOException;
     }
 
     public static final class ImportCanceledException extends IOException {
@@ -94,19 +103,17 @@ public final class ProjectImportService {
                 throw new IOException("No importable project root was found");
             }
 
-            return finalizeImport(projectsDirectory, baseName, staging, stagedProjectRoot, signal);
+            ImportResult result = finalizeImport(projectsDirectory, baseName, staging, stagedProjectRoot, signal);
+            finalized = true;
+            return result;
         } finally {
-            if (!finalized && staging.exists()) {
-                // finalizeImport renamed staging when it succeeded.
-                // If the old staging path no longer exists, cleanup is a no-op.
-                deleteTreeIterative(staging);
-            }
+            if (!finalized && staging.exists()) deleteTreeIterative(staging);
         }
     }
 
     /**
-     * Streaming project import with no application-defined project/archive byte
-     * or entry ceiling. Actual limits are available storage, filesystem/provider
+     * Streaming ZIP import with no application-defined project/archive byte or
+     * entry ceiling. Actual limits are available storage, filesystem/provider
      * behavior and runtime resources.
      */
     public static ImportResult importProject(InputStream source,
@@ -149,19 +156,54 @@ public final class ProjectImportService {
             checkCancelled(signal);
 
             String rootRelative = rootTracker.getBestRootRelativePath();
-            File stagedProjectRoot = rootRelative == null || rootRelative.length() == 0
-                    ? staging
-                    : new File(staging, rootRelative.replace('/', File.separatorChar));
-            stagedProjectRoot = stagedProjectRoot.getCanonicalFile();
-            requireContained(staging.getCanonicalFile(), stagedProjectRoot);
-            if (!stagedProjectRoot.isDirectory()) throw new IOException("No importable project root was found");
-
+            File stagedProjectRoot = resolveStagedProjectRoot(staging, rootRelative);
             ImportResult result = finalizeImport(projectsDirectory, baseName, staging, stagedProjectRoot, signal);
             finalized = true;
             return result;
         } finally {
             if (!finalized && staging.exists()) deleteTreeIterative(staging);
         }
+    }
+
+    /**
+     * Atomic import wrapper for non-ZIP sources such as an Android SAF folder.
+     * The writer must stream source content into the supplied staging directory
+     * and return only the best relative project-root candidate.
+     */
+    public static ImportResult importPreparedProject(File projectsDirectory,
+                                                      String suggestedName,
+                                                      CancellationSignal cancellation,
+                                                      StagingWriter writer) throws IOException {
+        if (projectsDirectory == null || !projectsDirectory.isDirectory()) {
+            throw new IllegalArgumentException("projectsDirectory must be an existing directory");
+        }
+        if (writer == null) throw new IllegalArgumentException("writer must not be null");
+
+        final CancellationSignal signal = cancellation == null ? NEVER_CANCELLED : cancellation;
+        String baseName = sanitizeProjectName(suggestedName);
+        File staging = createStagingDirectory(projectsDirectory, baseName);
+        boolean finalized = false;
+        try {
+            checkCancelled(signal);
+            String rootRelative = writer.write(staging, signal);
+            checkCancelled(signal);
+            File stagedProjectRoot = resolveStagedProjectRoot(staging, rootRelative);
+            ImportResult result = finalizeImport(projectsDirectory, baseName, staging, stagedProjectRoot, signal);
+            finalized = true;
+            return result;
+        } finally {
+            if (!finalized && staging.exists()) deleteTreeIterative(staging);
+        }
+    }
+
+    private static File resolveStagedProjectRoot(File staging, String rootRelative) throws IOException {
+        File stagedProjectRoot = rootRelative == null || rootRelative.length() == 0
+                ? staging
+                : new File(staging, rootRelative.replace('/', File.separatorChar));
+        stagedProjectRoot = stagedProjectRoot.getCanonicalFile();
+        requireContained(staging.getCanonicalFile(), stagedProjectRoot);
+        if (!stagedProjectRoot.isDirectory()) throw new IOException("No importable project root was found");
+        return stagedProjectRoot;
     }
 
     private static ImportResult finalizeImport(File projectsDirectory,

@@ -66,11 +66,10 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_TOOLCHAIN_PACK = 5002;
     private static final int REQUEST_RUNTIME_BOOTSTRAP = 5003;
     private static final int REQUEST_EXPORT_BACKUP = 5004;
+    private static final int REQUEST_IMPORT_FOLDER = 5005;
     private static final String PROJECT_BACKEND_ID = "local-project";
     private static final int MAX_DIRECTORY_CHILDREN = 10000;
     private static final String PARENT_ROW = "[UP] ..";
-    private static final long MAX_IMPORT_BYTES = 8L * 1024L * 1024L * 1024L;
-    private static final int MAX_IMPORT_ENTRIES = 100000;
     private static final long MAX_TEXT_BYTES = 2L * 1024L * 1024L;
     private static final long MAX_TOOLCHAIN_PACK_BYTES = 2L * 1024L * 1024L * 1024L;
     private static final int MAX_BACKUP_FILE_ENTRIES = 250000;
@@ -104,6 +103,7 @@ public final class MainActivity extends Activity {
     private ProjectPath currentDirectory;
     private ProjectPath currentPath;
     private File lastBuiltApk;
+    private ProjectImportController projectImportController;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -141,6 +141,12 @@ public final class MainActivity extends Activity {
             }
         };
         fileList.setAdapter(fileAdapter);
+
+        projectImportController = new ProjectImportController(this, io, new ProjectImportController.Listener() {
+            @Override public File getProjectStorageDirectory() throws IOException { return projectStorageDirectory(); }
+            @Override public void onImportMessage(String message) { appendConsole(message); }
+            @Override public void onProjectImported(File projectRoot) { loadProject(projectRoot); }
+        });
 
         editor.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
@@ -275,7 +281,25 @@ public final class MainActivity extends Activity {
         return projects;
     }
 
-    private void chooseZip() { startPicker("application/zip", REQUEST_IMPORT_ZIP); }
+    private void chooseZip() {
+        final String[] sources = new String[]{"ZIP archive", "Project folder"};
+        new AlertDialog.Builder(this)
+                .setTitle("Import Project")
+                .setItems(sources, new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface dialog, int which) {
+                        if (which == 0) startPicker("application/zip", REQUEST_IMPORT_ZIP);
+                        else startFolderPicker();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void startFolderPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
+    }
     private void chooseToolchainPack() { startPicker("application/zip", REQUEST_TOOLCHAIN_PACK); }
     private void chooseRuntimeBootstrap() { startPicker("application/zip", REQUEST_RUNTIME_BOOTSTRAP); }
 
@@ -298,7 +322,13 @@ public final class MainActivity extends Activity {
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) return;
-        if (requestCode == REQUEST_IMPORT_ZIP) importZip(data.getData());
+        if (requestCode == REQUEST_IMPORT_ZIP) projectImportController.importZip(data.getData());
+        else if (requestCode == REQUEST_IMPORT_FOLDER) {
+            try {
+                getContentResolver().takePersistableUriPermission(data.getData(), Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (SecurityException ignored) { }
+            projectImportController.importFolder(data.getData());
+        }
         else if (requestCode == REQUEST_TOOLCHAIN_PACK) importToolchainPack(data.getData());
         else if (requestCode == REQUEST_RUNTIME_BOOTSTRAP) importRuntimeBootstrap(data.getData());
         else if (requestCode == REQUEST_EXPORT_BACKUP) exportProjectBackup(data.getData());
@@ -374,28 +404,6 @@ public final class MainActivity extends Activity {
                 closeQuietly(output); closeQuietly(input); if (temp.exists()) temp.delete();
                 runOnUiThread(new Runnable() { @Override public void run() { toolchainButton.setEnabled(true); } });
             }
-        }});
-    }
-
-    private void importZip(final Uri uri) {
-        importButton.setEnabled(false);
-        appendConsole("\nImporting: " + displayName(uri));
-        io.execute(new Runnable() { @Override public void run() {
-            InputStream input = null;
-            try {
-                File projects = projectStorageDirectory();
-                File target = uniqueDirectory(projects, sanitizeProjectName(displayName(uri)));
-                input = getContentResolver().openInputStream(uri);
-                if (input == null) throw new IOException("Cannot open ZIP input stream");
-                long freeBefore = target.getParentFile().getUsableSpace();
-                appendConsole("Import storage available: " + humanBytes(freeBefore));
-                SafeZip.extractProject(input, target, MAX_IMPORT_ENTRIES, MAX_IMPORT_BYTES);
-                File collapsed = collapseSingleRootFolder(target);
-                final File normalized = ProjectRootDetector.findBestGradleRoot(collapsed, 6, 20000);
-                appendConsole("Detected project root: " + normalized.getAbsolutePath());
-                runOnUiThread(new Runnable() { @Override public void run() { loadProject(normalized); } });
-            } catch (Exception e) { appendConsole("IMPORT ERROR: " + e.getMessage()); }
-            finally { closeQuietly(input); runOnUiThread(new Runnable() { @Override public void run() { importButton.setEnabled(true); } }); }
         }});
     }
 

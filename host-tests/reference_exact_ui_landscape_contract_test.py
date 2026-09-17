@@ -31,10 +31,15 @@ for token in (
 for legacy in ('android:text="Save"', 'android:text="Save All"', 'android:text="Complete"', 'android:text="Actions"', 'BUILD &amp; TOOLS', 'MORE / SETTINGS'):
     require(legacy not in layout, "Landscape still exposes legacy UI: %s" % legacy)
 
-# Authoritative controls must be visible in their actual surfaces, not buried in the hidden compatibility holder.
-hidden_at = layout.find('android:visibility="gone"')
+# Workspace surfaces intentionally start GONE and are shown by navigation. Only the final 1dp
+# compatibility holder is permanently hidden, so authoritative controls must occur before it.
+hidden_marker = '<LinearLayout android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone">'
+hidden_at = layout.rfind(hidden_marker)
+require(hidden_at >= 0, "Landscape hidden compatibility holder missing")
 for control in ('buildButton', 'settingsButton', 'developerToolsButton', 'projectSettingsButton'):
-    pos = layout.find('android:id="@+id/%s"' % control)
-    require(pos >= 0 and (hidden_at < 0 or pos < hidden_at), "%s must be visible before hidden compatibility controls" % control)
+    token = 'android:id="@+id/%s"' % control
+    pos = layout.find(token)
+    require(pos >= 0 and pos < hidden_at, "%s must be a visible authoritative control" % control)
+    require(layout.find(token, pos + 1) < 0, "%s must only exist once" % control)
 
 print("REFERENCE EXACT LANDSCAPE UI CONTRACT PASSED")

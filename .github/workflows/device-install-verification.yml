@@ -119,8 +119,8 @@ jobs:
         shell: bash
         run: |
           cat > verify-device.sh <<'EOF'
-          #!/usr/bin/env bash
-          set -euo pipefail
+          #!/bin/sh
+          set -eu
           collect_runtime_evidence() {
             adb shell dumpsys activity activities > device-activities-full.txt 2>&1 || true
             adb shell ps -A > device-processes-full.txt 2>&1 || adb shell ps > device-processes-full.txt 2>&1 || true
@@ -155,7 +155,7 @@ jobs:
           trap - EXIT
           EOF
           chmod +x verify-device.sh
-          bash -n verify-device.sh
+          sh -n verify-device.sh
       - name: Install exact signed APK on proven API 28 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:

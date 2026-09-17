@@ -1,0 +1,16 @@
+name: Reference UI Verification
+on:
+  pull_request:
+    branches: [ main, release-official-signed-apk ]
+  push:
+    branches: [ feature/reference-exact-ui-rebuild ]
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run host contracts
+        run: bash host-tests/run.sh

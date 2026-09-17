@@ -3,6 +3,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 workflow_dir = ROOT / ".github/workflows"
 workflows = "\n".join(p.read_text(encoding="utf-8") for p in sorted(workflow_dir.glob("*.yml")))
+emulator_script_path = ROOT / ".github/scripts/verify-emulator.sh"
+emulator_script = emulator_script_path.read_text(encoding="utf-8") if emulator_script_path.is_file() else ""
 capabilities = ROOT / "docs/CAPABILITY_MATRIX.md"
 report = ROOT / "docs/VERIFICATION_REPORT.md"
 
@@ -30,5 +32,17 @@ require("api-level: 28" in workflows, "Signed APK must pass the repository's pro
 require("targetSdkVersion:'29'" in workflows, "Release gate must preserve targetSdk 29 metadata verification")
 require("DevxyzIDE-v0.6.1-signed-candidate" in workflows, "Signed candidate must be preserved before the runtime gate")
 require("device-apk-signing.txt" in workflows, "Release gate must preserve APK signing verification evidence")
+require("script: sh .github/scripts/verify-emulator.sh" in workflows,
+        "Full emulator gate must invoke the atomic emulator verification script")
+require(emulator_script_path.is_file(), "Atomic emulator verification script is missing")
+require("install_apk()" in emulator_script, "Atomic emulator script must use the bounded APK install helper")
+require("timeout 120 adb install -r" in emulator_script,
+        "Emulator APK installs must have a hard timeout instead of hanging the entire job")
+require("adb kill-server" in emulator_script and "adb start-server" in emulator_script,
+        "Timed-out emulator installs must recover the ADB server before retrying")
+require("com.jepongdevxyz.idebuild" in emulator_script,
+        "Atomic emulator script must verify the DevxyzIDE package launch")
+require("com.jepongdevxyz.devxyzsamplejava" in emulator_script and "com.jepongdevxyz.devxyzsamplekotlin" in emulator_script,
+        "Atomic emulator script must verify both generated sample packages")
 
 print("RELEASE BUNDLE CONTRACT TESTS PASSED")

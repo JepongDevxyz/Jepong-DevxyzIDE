@@ -5,7 +5,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, release-official-signed-apk ]
 
 permissions:
   contents: read
@@ -15,59 +15,46 @@ jobs:
     name: Build APK with Android SDK 28
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
       - name: Set up JDK 17 for Android SDK tools and host tests
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-
       - name: Install Android SDK packages
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-28" \
-            "build-tools;28.0.3"
-
+          sdkmanager "platform-tools" "platforms;android-28" "build-tools;28.0.3"
       - name: Run host and runtime compatibility tests
         shell: bash
         run: sh host-tests/run.sh
-
       - name: Set up JDK 8 for legacy Gradle and AGP
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '8'
-
       - name: Set up Gradle 4.6
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '4.6'
-
       - name: Show tool versions
         shell: bash
         run: |
           java -version
           gradle --version
           adb version
-
       - name: Build debug APK
         shell: bash
         run: |
           set -o pipefail
           gradle --no-daemon --stacktrace clean assembleDebug 2>&1 | tee gradle-build.log
-
       - name: Upload Gradle diagnostic log
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,7 +63,6 @@ jobs:
           path: gradle-build.log
           if-no-files-found: warn
           retention-days: 7
-
       - name: Verify APK exists and ZIP structure is valid
         shell: bash
         run: |
@@ -85,7 +71,6 @@ jobs:
           unzip -t "$APK"
           "${ANDROID_SDK_ROOT}/build-tools/28.0.3/aapt" dump badging "$APK" | tee apk-badging.txt
           grep -F "package: name='com.jepongdevxyz.idebuild'" apk-badging.txt
-
       - name: Verify real Android SDK APK signing
         shell: bash
         run: |
@@ -94,31 +79,13 @@ jobs:
           SIGNED="app/build/outputs/apk/debug/app-ci-signed.apk"
           KEYSTORE="${RUNNER_TEMP}/devxyz-ci-signing.jks"
           export DEVXYZ_CI_KS_PASS="$(openssl rand -hex 16)"
-          keytool -genkeypair \
-            -keystore "$KEYSTORE" \
-            -storepass:env DEVXYZ_CI_KS_PASS \
-            -keypass:env DEVXYZ_CI_KS_PASS \
-            -alias devxyz-ci \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 2 \
-            -dname "CN=DevxyzIDE CI,O=Jepong Devxyz,C=PH"
-          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/apksigner" sign \
-            --ks "$KEYSTORE" \
-            --ks-key-alias devxyz-ci \
-            --ks-pass env:DEVXYZ_CI_KS_PASS \
-            --key-pass env:DEVXYZ_CI_KS_PASS \
-            --out "$SIGNED" \
-            "$APK"
+          keytool -genkeypair -keystore "$KEYSTORE" -storepass:env DEVXYZ_CI_KS_PASS -keypass:env DEVXYZ_CI_KS_PASS -alias devxyz-ci -keyalg RSA -keysize 2048 -validity 2 -dname "CN=DevxyzIDE CI,O=Jepong Devxyz,C=PH"
+          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/apksigner" sign --ks "$KEYSTORE" --ks-key-alias devxyz-ci --ks-pass env:DEVXYZ_CI_KS_PASS --key-pass env:DEVXYZ_CI_KS_PASS --out "$SIGNED" "$APK"
           test -s "$SIGNED"
-          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/apksigner" verify \
-            --verbose \
-            --print-certs \
-            "$SIGNED" | tee apk-signing-verification.txt
+          "${ANDROID_SDK_ROOT}/build-tools/28.0.3/apksigner" verify --verbose --print-certs "$SIGNED" | tee apk-signing-verification.txt
           unzip -t "$SIGNED"
           rm -f "$KEYSTORE"
           unset DEVXYZ_CI_KS_PASS
-
       - name: Upload verified APK
         uses: actions/upload-artifact@v4
         with:
@@ -135,84 +102,60 @@ jobs:
     name: Generate and build DevxyzIDE Java/Kotlin samples
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-
       - name: Install Android SDK 35 packages
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
-
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-
       - name: Compile production template generator utility
         shell: bash
         run: |
           set -euo pipefail
           rm -rf generated-ci
           mkdir -p generated-ci/classes generated-ci/projects
-          javac -d generated-ci/classes \
-            app/src/main/java/com/jepongdevxyz/idebuild/core/build/ProjectTemplateGenerator.java \
-            host-tests/GenerateTemplateProject.java
-
+          javac -d generated-ci/classes app/src/main/java/com/jepongdevxyz/idebuild/core/build/ProjectTemplateGenerator.java host-tests/GenerateTemplateProject.java
       - name: Generate Java and Kotlin sample projects using production code
         shell: bash
         run: |
           set -euo pipefail
-          java -cp generated-ci/classes GenerateTemplateProject \
-            generated-ci/projects java com.jepongdevxyz.devxyzsamplejava
-          java -cp generated-ci/classes GenerateTemplateProject \
-            generated-ci/projects kotlin com.jepongdevxyz.devxyzsamplekotlin
+          java -cp generated-ci/classes GenerateTemplateProject generated-ci/projects java com.jepongdevxyz.devxyzsamplejava
+          java -cp generated-ci/classes GenerateTemplateProject generated-ci/projects kotlin com.jepongdevxyz.devxyzsamplekotlin
           test -f generated-ci/projects/DevxyzJavaSample/app/build.gradle
           test -f generated-ci/projects/DevxyzKotlinSample/app/build.gradle
           test -f generated-ci/projects/DevxyzKotlinSample/app/src/main/kotlin/com/jepongdevxyz/devxyzsamplekotlin/MainActivity.kt
-
       - name: Build generated Java sample
         shell: bash
         run: |
           set -o pipefail
-          gradle -p generated-ci/projects/DevxyzJavaSample \
-            --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee generated-java-build.log
-
+          gradle -p generated-ci/projects/DevxyzJavaSample --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee generated-java-build.log
       - name: Build generated Kotlin sample
         shell: bash
         run: |
           set -o pipefail
-          gradle -p generated-ci/projects/DevxyzKotlinSample \
-            --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee generated-kotlin-build.log
-
+          gradle -p generated-ci/projects/DevxyzKotlinSample --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee generated-kotlin-build.log
       - name: Verify cached offline Java and Kotlin rebuilds
         shell: bash
         run: |
           set -euo pipefail
           set -o pipefail
-          gradle -p generated-ci/projects/DevxyzJavaSample \
-            --offline --no-daemon --stacktrace clean :app:assembleDebug \
-            2>&1 | tee generated-java-offline-build.log
-          gradle -p generated-ci/projects/DevxyzKotlinSample \
-            --offline --no-daemon --stacktrace clean :app:assembleDebug \
-            2>&1 | tee generated-kotlin-offline-build.log
-
+          gradle -p generated-ci/projects/DevxyzJavaSample --offline --no-daemon --stacktrace clean :app:assembleDebug 2>&1 | tee generated-java-offline-build.log
+          gradle -p generated-ci/projects/DevxyzKotlinSample --offline --no-daemon --stacktrace clean :app:assembleDebug 2>&1 | tee generated-kotlin-offline-build.log
       - name: Verify a missing dependency fails clearly in offline mode
         shell: bash
         run: |
@@ -220,26 +163,14 @@ jobs:
           MISSING_DIR="generated-ci/projects/DevxyzOfflineMissing"
           rm -rf "$MISSING_DIR"
           cp -a generated-ci/projects/DevxyzJavaSample "$MISSING_DIR"
-          cat >> "$MISSING_DIR/app/build.gradle" <<'EOF'
-
-          dependencies {
-              implementation 'com.jepongdevxyz.missing:offline-only:0.0.0'
-          }
-          EOF
+          printf '\ndependencies {\n    implementation '\''com.jepongdevxyz.missing:offline-only:0.0.0'\''\n}\n' >> "$MISSING_DIR/app/build.gradle"
           set +e
-          gradle -p "$MISSING_DIR" --offline --no-daemon --stacktrace clean :app:assembleDebug \
-            > missing-dependency-offline.log 2>&1
+          gradle -p "$MISSING_DIR" --offline --no-daemon --stacktrace clean :app:assembleDebug > missing-dependency-offline.log 2>&1
           STATUS=$?
           set -e
-          if [ "$STATUS" -eq 0 ]; then
-            echo "Expected missing offline dependency build to fail" >&2
-            cat missing-dependency-offline.log
-            exit 1
-          fi
+          if [ "$STATUS" -eq 0 ]; then echo "Expected missing offline dependency build to fail" >&2; cat missing-dependency-offline.log; exit 1; fi
           grep -F "com.jepongdevxyz.missing:offline-only:0.0.0" missing-dependency-offline.log
           grep -Eiq "offline|cache|cached" missing-dependency-offline.log
-          echo "Missing offline dependency failed as expected with exit $STATUS"
-
       - name: Verify real broken-source diagnostics are navigable
         shell: bash
         run: |
@@ -250,25 +181,14 @@ jobs:
           cp -a generated-ci/projects/DevxyzJavaSample "$BROKEN_DIR"
           printf '\nTHIS_IS_NOT_VALID_JAVA\n' >> "$BROKEN_DIR/$BROKEN_SOURCE"
           set +e
-          gradle -p "$BROKEN_DIR" --offline --no-daemon --stacktrace :app:compileDebugJavaWithJavac \
-            > broken-java-build.log 2>&1
+          gradle -p "$BROKEN_DIR" --offline --no-daemon --stacktrace :app:compileDebugJavaWithJavac > broken-java-build.log 2>&1
           STATUS=$?
           set -e
-          if [ "$STATUS" -eq 0 ]; then
-            echo "Expected deliberately broken Java source to fail compilation" >&2
-            cat broken-java-build.log
-            exit 1
-          fi
+          if [ "$STATUS" -eq 0 ]; then echo "Expected deliberately broken Java source to fail compilation" >&2; cat broken-java-build.log; exit 1; fi
           rm -rf generated-ci/diagnostic-classes
           mkdir -p generated-ci/diagnostic-classes
-          javac -d generated-ci/diagnostic-classes \
-            app/src/main/java/com/jepongdevxyz/idebuild/core/ProjectPath.java \
-            app/src/main/java/com/jepongdevxyz/idebuild/core/build/BuildProblem.java \
-            app/src/main/java/com/jepongdevxyz/idebuild/core/build/BuildDiagnosticsParser.java \
-            host-tests/VerifyBuildDiagnostics.java
-          java -cp generated-ci/diagnostic-classes VerifyBuildDiagnostics \
-            "$BROKEN_DIR" broken-java-build.log "$BROKEN_SOURCE"
-
+          javac -d generated-ci/diagnostic-classes app/src/main/java/com/jepongdevxyz/idebuild/core/ProjectPath.java app/src/main/java/com/jepongdevxyz/idebuild/core/build/BuildProblem.java app/src/main/java/com/jepongdevxyz/idebuild/core/build/BuildDiagnosticsParser.java host-tests/VerifyBuildDiagnostics.java
+          java -cp generated-ci/diagnostic-classes VerifyBuildDiagnostics "$BROKEN_DIR" broken-java-build.log "$BROKEN_SOURCE"
       - name: Validate generated sample APKs
         shell: bash
         run: |
@@ -283,7 +203,6 @@ jobs:
           "${ANDROID_SDK_ROOT}/build-tools/35.0.0/aapt" dump badging "$KOTLIN_APK" | tee generated-kotlin-badging.txt
           grep -F "package: name='com.jepongdevxyz.devxyzsamplejava'" generated-java-badging.txt
           grep -F "package: name='com.jepongdevxyz.devxyzsamplekotlin'" generated-kotlin-badging.txt
-
       - name: Upload generated sample APKs and build logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -308,34 +227,28 @@ jobs:
     needs: [build, templates]
     runs-on: ubuntu-latest
     timeout-minutes: 35
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
       - name: Set up JDK 17 for Android SDK tools
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-
       - name: Download built DevxyzIDE APK
         uses: actions/download-artifact@v4
         with:
           name: DevxyzIDE-v0.6-debug-apk
           path: verified-artifact
-
       - name: Download generated sample APKs
         uses: actions/download-artifact@v4
         with:
           name: DevxyzIDE-generated-samples
           path: generated-samples
-
       - name: Boot API 28 emulator, install APKs, and launch DevxyzIDE plus generated samples
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -345,49 +258,18 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: |
-            set -e
-            test -s "$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
-            test -s "$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
-            test -s "$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
-            adb wait-for-device
-
-            echo "Installing DevxyzIDE"
-            adb install -r "$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
-            adb shell pm list packages | grep -F "package:com.jepongdevxyz.idebuild"
-            adb shell monkey -p com.jepongdevxyz.idebuild -c android.intent.category.LAUNCHER 1
-            sleep 3
-            adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.idebuild"
-            adb shell am force-stop com.jepongdevxyz.idebuild
-
-            echo "Installing generated Java sample"
-            adb install -r "$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
-            adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsamplejava"
-            adb shell monkey -p com.jepongdevxyz.devxyzsamplejava -c android.intent.category.LAUNCHER 1
-            sleep 3
-            adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.devxyzsamplejava"
-            adb shell am force-stop com.jepongdevxyz.devxyzsamplejava
-
-            echo "Installing generated Kotlin sample"
-            adb install -r "$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
-            adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsamplekotlin"
-            adb shell monkey -p com.jepongdevxyz.devxyzsamplekotlin -c android.intent.category.LAUNCHER 1
-            sleep 3
-            adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.devxyzsamplekotlin"
-            adb shell am force-stop com.jepongdevxyz.devxyzsamplekotlin
+          script: sh .github/scripts/verify-emulator.sh
 
   release_bundle:
     name: Package verified source ZIP
     needs: [emulator]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - name: Checkout exact verified source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Package exact verified source
         shell: bash
         run: |
@@ -409,7 +291,6 @@ jobs:
           (cd release-bundle && zip -qr ../DevxyzIDE-verified-source.zip DevxyzIDE-verified-source)
           unzip -t DevxyzIDE-verified-source.zip
           sha256sum DevxyzIDE-verified-source.zip > DevxyzIDE-verified-source.zip.sha256
-
       - name: Upload verified source ZIP
         uses: actions/upload-artifact@v4
         with:

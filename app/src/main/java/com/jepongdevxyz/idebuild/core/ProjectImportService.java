@@ -3,6 +3,8 @@ package com.jepongdevxyz.idebuild.core;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /**
  * Imports a project ZIP through a disposable staging directory and only exposes
@@ -17,6 +19,15 @@ public final class ProjectImportService {
         void onProgress(int entries, long expandedBytes);
     }
 
+    /**
+     * Optional storage check used by Android callers while a project streams to
+     * staging. Throw IOException to stop safely (for example when storage is
+     * exhausted). The source is never modified.
+     */
+    public interface StorageProbe {
+        void check(File destinationRoot, long expandedBytes) throws IOException;
+    }
+
     public static final class ImportCanceledException extends IOException {
         public ImportCanceledException() { super("Project import canceled"); }
     }
@@ -29,8 +40,17 @@ public final class ProjectImportService {
         @Override public void onProgress(int entries, long expandedBytes) { }
     };
 
+    public static final StorageProbe NO_STORAGE_PROBE = new StorageProbe() {
+        @Override public void check(File destinationRoot, long expandedBytes) { }
+    };
+
     private ProjectImportService() { }
 
+    /**
+     * Legacy bounded overload retained for callers that deliberately request an
+     * extraction policy limit. Project import UI should use the streaming
+     * overload without maxEntries/maxExpandedBytes below.
+     */
     public static ImportResult importProject(InputStream source,
                                              File projectsDirectory,
                                              String suggestedName,
@@ -74,24 +94,100 @@ public final class ProjectImportService {
                 throw new IOException("No importable project root was found");
             }
 
-            String stagedRelative = relativeInside(staging, stagedProjectRoot);
-            checkCancelled(signal);
-            File finalDirectory = nextAvailableDirectory(projectsDirectory, baseName);
-            if (!staging.renameTo(finalDirectory)) {
-                throw new IOException("Could not finalize imported project");
-            }
-            finalized = true;
-
-            File finalProjectRoot = stagedRelative.length() == 0
-                    ? finalDirectory
-                    : new File(finalDirectory, stagedRelative.replace('/', File.separatorChar));
-            finalProjectRoot = finalProjectRoot.getCanonicalFile();
-            requireContained(finalDirectory.getCanonicalFile(), finalProjectRoot);
-            if (!finalProjectRoot.isDirectory()) throw new IOException("Imported project root disappeared during finalization");
-            return new ImportResult(finalDirectory.getCanonicalFile(), finalProjectRoot);
+            return finalizeImport(projectsDirectory, baseName, staging, stagedProjectRoot, signal);
         } finally {
-            if (!finalized && staging.exists()) deleteTree(staging);
+            if (!finalized && staging.exists()) {
+                // finalizeImport renamed staging when it succeeded.
+                // If the old staging path no longer exists, cleanup is a no-op.
+                deleteTreeIterative(staging);
+            }
         }
+    }
+
+    /**
+     * Streaming project import with no application-defined project/archive byte
+     * or entry ceiling. Actual limits are available storage, filesystem/provider
+     * behavior and runtime resources.
+     */
+    public static ImportResult importProject(InputStream source,
+                                             File projectsDirectory,
+                                             String suggestedName,
+                                             final CancellationSignal cancellation,
+                                             final ProgressListener progress,
+                                             final StorageProbe storageProbe) throws IOException {
+        if (source == null) throw new IllegalArgumentException("source must not be null");
+        if (projectsDirectory == null || !projectsDirectory.isDirectory()) {
+            throw new IllegalArgumentException("projectsDirectory must be an existing directory");
+        }
+
+        final CancellationSignal signal = cancellation == null ? NEVER_CANCELLED : cancellation;
+        final ProgressListener listener = progress == null ? NO_PROGRESS : progress;
+        final StorageProbe probe = storageProbe == null ? NO_STORAGE_PROBE : storageProbe;
+        final ProjectRootTracker rootTracker = new ProjectRootTracker();
+
+        String baseName = sanitizeProjectName(suggestedName);
+        final File staging = createStagingDirectory(projectsDirectory, baseName);
+        boolean finalized = false;
+        try {
+            checkCancelled(signal);
+            probe.check(staging, 0L);
+            try {
+                SafeZip.extractProject(source, staging,
+                        new SafeZip.CancellationSignal() {
+                            @Override public boolean isCancelled() { return signal.isCancelled(); }
+                        },
+                        new SafeZip.ProjectProgressListener() {
+                            @Override public void onProgress(String entryName, long entries, long expandedBytes) throws IOException {
+                                rootTracker.onEntry(entryName);
+                                probe.check(staging, expandedBytes);
+                                listener.onProgress(saturatingEntryCount(entries), expandedBytes);
+                            }
+                        });
+            } catch (SafeZip.ExtractionCanceledException canceled) {
+                throw new ImportCanceledException();
+            }
+            checkCancelled(signal);
+
+            String rootRelative = rootTracker.getBestRootRelativePath();
+            File stagedProjectRoot = rootRelative == null || rootRelative.length() == 0
+                    ? staging
+                    : new File(staging, rootRelative.replace('/', File.separatorChar));
+            stagedProjectRoot = stagedProjectRoot.getCanonicalFile();
+            requireContained(staging.getCanonicalFile(), stagedProjectRoot);
+            if (!stagedProjectRoot.isDirectory()) throw new IOException("No importable project root was found");
+
+            ImportResult result = finalizeImport(projectsDirectory, baseName, staging, stagedProjectRoot, signal);
+            finalized = true;
+            return result;
+        } finally {
+            if (!finalized && staging.exists()) deleteTreeIterative(staging);
+        }
+    }
+
+    private static ImportResult finalizeImport(File projectsDirectory,
+                                               String baseName,
+                                               File staging,
+                                               File stagedProjectRoot,
+                                               CancellationSignal signal) throws IOException {
+        String stagedRelative = relativeInside(staging, stagedProjectRoot);
+        checkCancelled(signal);
+        File finalDirectory = nextAvailableDirectory(projectsDirectory, baseName);
+        if (!staging.renameTo(finalDirectory)) {
+            throw new IOException("Could not finalize imported project");
+        }
+
+        File finalProjectRoot = stagedRelative.length() == 0
+                ? finalDirectory
+                : new File(finalDirectory, stagedRelative.replace('/', File.separatorChar));
+        finalProjectRoot = finalProjectRoot.getCanonicalFile();
+        requireContained(finalDirectory.getCanonicalFile(), finalProjectRoot);
+        if (!finalProjectRoot.isDirectory()) throw new IOException("Imported project root disappeared during finalization");
+        return new ImportResult(finalDirectory.getCanonicalFile(), finalProjectRoot);
+    }
+
+    private static int saturatingEntryCount(long entries) {
+        if (entries <= 0L) return 0;
+        return entries >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) entries;
     }
 
     private static void checkCancelled(CancellationSignal cancellation) throws ImportCanceledException {
@@ -148,13 +244,24 @@ public final class ProjectImportService {
         }
     }
 
-    private static void deleteTree(File file) {
-        if (file == null || !file.exists()) return;
-        File[] children = file.listFiles();
-        if (children != null) {
-            for (File child : children) deleteTree(child);
+    private static void deleteTreeIterative(File root) {
+        if (root == null || !root.exists()) return;
+        Deque<File> pending = new ArrayDeque<File>();
+        Deque<File> directories = new ArrayDeque<File>();
+        pending.push(root);
+        while (!pending.isEmpty()) {
+            File current = pending.pop();
+            if (current.isDirectory()) {
+                directories.push(current);
+                File[] children = current.listFiles();
+                if (children != null) {
+                    for (File child : children) pending.push(child);
+                }
+            } else {
+                current.delete();
+            }
         }
-        file.delete();
+        while (!directories.isEmpty()) directories.pop().delete();
     }
 
     public static final class ImportResult {

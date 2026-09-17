@@ -6,6 +6,15 @@
         <item name="android:statusBarColor">@color/devxyz_bg</item>
         <item name="android:windowBackground">@color/devxyz_bg</item>
         <item name="android:colorAccent">@color/devxyz_cyan</item>
+        <item name="android:alertDialogTheme">@style/Theme.DevxyzIDE.Dialog</item>
+    </style>
+    <style name="Theme.DevxyzIDE.Dialog" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/devxyz_card</item>
+        <item name="android:colorAccent">@color/devxyz_cyan</item>
+        <item name="android:textColorPrimary">@color/devxyz_text</item>
+        <item name="android:textColorSecondary">@color/devxyz_muted</item>
+        <item name="android:windowMinWidthMajor">88%</item>
+        <item name="android:windowMinWidthMinor">88%</item>
     </style>
     <style name="Theme.DevxyzIDE.Splash" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowFullscreen">true</item>

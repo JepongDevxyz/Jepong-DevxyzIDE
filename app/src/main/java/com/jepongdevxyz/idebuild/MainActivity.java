@@ -302,11 +302,11 @@ public final class MainActivity extends Activity {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
     } else {
-        appendConsole("
-Folder import requires Android 5.0 or newer. ZIP import remains available.");
+        appendConsole("\nFolder import requires Android 5.0 or newer. ZIP import remains available.");
     }
 }
-    private void chooseToolchainPack() { startPicker("application/zip", REQUEST_TOOLCHAIN_PACK); }
+
+private void chooseToolchainPack() { startPicker("application/zip", REQUEST_TOOLCHAIN_PACK); }
     private void chooseRuntimeBootstrap() { startPicker("application/zip", REQUEST_RUNTIME_BOOTSTRAP); }
 
     private void chooseBackupDestination() {

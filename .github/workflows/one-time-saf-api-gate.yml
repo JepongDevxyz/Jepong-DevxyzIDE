@@ -17,53 +17,48 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feature/devxyzide-01-foundation
-      - name: Add API 21 gate for folder SAF picker
-        shell: python
+          fetch-depth: 0
+      - name: Repair SAF picker source safely
+        shell: python {0}
         run: |
           from pathlib import Path
-
-          path = Path('app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java')
-          s = path.read_text()
-
+          import re
+          p = Path('app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java')
+          s = p.read_text()
           if 'import android.os.Build;' not in s:
               s = s.replace('import android.os.Bundle;\n', 'import android.os.Build;\nimport android.os.Bundle;\n', 1)
+          pattern = r'    private void startFolderPicker\(\) \{.*?\n    private void chooseToolchainPack'
+          method = '''    private void startFolderPicker() {
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                  Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                  intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                  startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
+              } else {
+                  appendConsole("\\nFolder import requires Android 5.0 or newer. ZIP import remains available.");
+              }
+          }
 
-          old = '''    private void startFolderPicker() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
-    }
-'''
-          new = '''    private void startFolderPicker() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-            startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
-        } else {
-            appendConsole("\\nProject folder import requires Android 5.0 or newer. ZIP import remains available on this device.");
-            new AlertDialog.Builder(this)
-                    .setTitle("Folder import unavailable")
-                    .setMessage("Android 4.4 does not provide the Storage Access Framework folder picker. Import the project as a ZIP archive instead.")
-                    .setPositiveButton("OK", null)
-                    .show();
-        }
-    }
-'''
-          if old not in s:
-              raise SystemExit('Expected startFolderPicker implementation not found')
-          s = s.replace(old, new, 1)
-          path.write_text(s)
-      - name: Verify API gate contract
+          private void chooseToolchainPack'''
+          s, count = re.subn(pattern, lambda m: method, s, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit('startFolderPicker region not found')
+          p.write_text(s)
+          Path('.github/workflows/one-time-saf-api-gate.yml').unlink()
+      - name: Verify Java source contract
         run: |
-          grep -q 'Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP' app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
-          grep -q 'Intent.ACTION_OPEN_DOCUMENT_TREE' app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
-          grep -q 'ZIP import remains available' app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
-      - name: Commit fix
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java').read_text()
+          assert 'import android.os.Build;' in s
+          assert 'Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP' in s
+          assert 'appendConsole("\\nFolder import requires Android 5.0 or newer. ZIP import remains available.");' in s
+          assert 'appendConsole("\nFolder' not in s
+          PY
+          python host-tests/import_ui_contract_test.py
+      - name: Commit repaired source
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
-          git commit -m 'fix: gate SAF folder import on Android 5+'
+          git add -A
+          git commit -m 'fix: compile-safe API21 SAF import guard'
           git push origin HEAD:feature/devxyzide-01-foundation
-
-# Triggered after creation so this branch-local workflow executes once.

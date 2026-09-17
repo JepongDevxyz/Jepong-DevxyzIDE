@@ -100,13 +100,24 @@ jobs:
           cp "$APK" DevxyzIDE-v0.6.1-official-release.apk
           sha256sum DevxyzIDE-v0.6.1-official-release.apk > DevxyzIDE-v0.6.1-official-release.apk.sha256
 
-      - name: Upload official release APK
+      - name: Package exact verified source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip --output=DevxyzIDE-v0.6.1-official-source.zip HEAD
+          test -s DevxyzIDE-v0.6.1-official-source.zip
+          unzip -t DevxyzIDE-v0.6.1-official-source.zip
+          sha256sum DevxyzIDE-v0.6.1-official-source.zip > DevxyzIDE-v0.6.1-official-source.zip.sha256
+
+      - name: Upload official release APK and source
         uses: actions/upload-artifact@v4
         with:
-          name: DevxyzIDE-v0.6.1-official-signed-release
+          name: DevxyzIDE-v0.6.1-official-release-bundle
           path: |
             DevxyzIDE-v0.6.1-official-release.apk
             DevxyzIDE-v0.6.1-official-release.apk.sha256
+            DevxyzIDE-v0.6.1-official-source.zip
+            DevxyzIDE-v0.6.1-official-source.zip.sha256
             apk-badging.txt
           if-no-files-found: error
           retention-days: 30

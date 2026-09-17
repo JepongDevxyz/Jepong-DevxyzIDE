@@ -1,0 +1,67 @@
+name: One-time SAF API gate repair
+
+on:
+  push:
+    branches:
+      - feature/devxyzide-01-foundation
+    paths:
+      - .github/workflows/one-time-saf-api-gate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/devxyzide-01-foundation
+      - name: Add API 21 gate for folder SAF picker
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java')
+          s = path.read_text()
+
+          if 'import android.os.Build;' not in s:
+              s = s.replace('import android.os.Bundle;\n', 'import android.os.Build;\nimport android.os.Bundle;\n', 1)
+
+          old = '''    private void startFolderPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
+    }
+'''
+          new = '''    private void startFolderPicker() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
+        } else {
+            appendConsole("\\nProject folder import requires Android 5.0 or newer. ZIP import remains available on this device.");
+            new AlertDialog.Builder(this)
+                    .setTitle("Folder import unavailable")
+                    .setMessage("Android 4.4 does not provide the Storage Access Framework folder picker. Import the project as a ZIP archive instead.")
+                    .setPositiveButton("OK", null)
+                    .show();
+        }
+    }
+'''
+          if old not in s:
+              raise SystemExit('Expected startFolderPicker implementation not found')
+          s = s.replace(old, new, 1)
+          path.write_text(s)
+      - name: Verify API gate contract
+        run: |
+          grep -q 'Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP' app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
+          grep -q 'Intent.ACTION_OPEN_DOCUMENT_TREE' app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
+          grep -q 'ZIP import remains available' app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
+          git commit -m 'fix: gate SAF folder import on Android 5+'
+          git push origin HEAD:feature/devxyzide-01-foundation

@@ -15,59 +15,46 @@ jobs:
     name: Build APK with Android SDK 28
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
       - name: Set up JDK 17 for Android SDK tools and host tests
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-
       - name: Install Android SDK packages
         shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-28" \
-            "build-tools;28.0.3"
-
+          sdkmanager "platform-tools" "platforms;android-28" "build-tools;28.0.3"
       - name: Run host and runtime compatibility tests
         shell: bash
         run: sh host-tests/run.sh
-
       - name: Set up JDK 8 for legacy Gradle and AGP
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '8'
-
       - name: Set up Gradle 4.6
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '4.6'
-
       - name: Show tool versions
         shell: bash
         run: |
           java -version
           gradle --version
           adb version
-
       - name: Build debug APK
         shell: bash
         run: |
           set -o pipefail
           gradle --no-daemon --stacktrace clean assembleDebug 2>&1 | tee gradle-build.log
-
       - name: Upload Gradle diagnostic log
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,7 +63,6 @@ jobs:
           path: gradle-build.log
           if-no-files-found: warn
           retention-days: 7
-
       - name: Verify APK exists and ZIP structure is valid
         shell: bash
         run: |
@@ -85,7 +71,6 @@ jobs:
           unzip -t "$APK"
           "${ANDROID_SDK_ROOT}/build-tools/28.0.3/aapt" dump badging "$APK" | tee apk-badging.txt
           grep -F "package: name='com.jepongdevxyz.idebuild'" apk-badging.txt
-
       - name: Verify real Android SDK APK signing
         shell: bash
         run: |
@@ -101,7 +86,6 @@ jobs:
           unzip -t "$SIGNED"
           rm -f "$KEYSTORE"
           unset DEVXYZ_CI_KS_PASS
-
       - name: Upload verified APK
         uses: actions/upload-artifact@v4
         with:
@@ -118,7 +102,6 @@ jobs:
     name: Generate and build DevxyzIDE Java/Kotlin samples
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -282,26 +265,39 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -eu
-            test -s "$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
-            test -s "$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
-            test -s "$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
+            DEVXYZ_APK="$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
+            JAVA_APK="$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
+            KOTLIN_APK="$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
+            test -s "$DEVXYZ_APK"
+            test -s "$JAVA_APK"
+            test -s "$KOTLIN_APK"
             adb wait-for-device
-            echo "Installing DevxyzIDE"
-            adb install -r "$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
+            install_apk() {
+              apk="$1"
+              label="$2"
+              echo "Installing $label"
+              if timeout 120 adb install -r "$apk"; then
+                return 0
+              fi
+              echo "Initial $label install timed out/failed; recovering ADB and retrying once" >&2
+              adb kill-server || true
+              adb start-server
+              adb wait-for-device
+              timeout 120 adb install -r "$apk"
+            }
+            install_apk "$DEVXYZ_APK" "DevxyzIDE"
             adb shell pm list packages | grep -F "package:com.jepongdevxyz.idebuild"
             adb shell monkey -p com.jepongdevxyz.idebuild -c android.intent.category.LAUNCHER 1
             sleep 3
             adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.idebuild"
             adb shell am force-stop com.jepongdevxyz.idebuild
-            echo "Installing generated Java sample"
-            adb install -r "$(find generated-samples -type f -path '*DevxyzJavaSample*' -name 'app-debug.apk' -print -quit)"
+            install_apk "$JAVA_APK" "generated Java sample"
             adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsamplejava"
             adb shell monkey -p com.jepongdevxyz.devxyzsamplejava -c android.intent.category.LAUNCHER 1
             sleep 3
             adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.devxyzsamplejava"
             adb shell am force-stop com.jepongdevxyz.devxyzsamplejava
-            echo "Installing generated Kotlin sample"
-            adb install -r "$(find generated-samples -type f -path '*DevxyzKotlinSample*' -name 'app-debug.apk' -print -quit)"
+            install_apk "$KOTLIN_APK" "generated Kotlin sample"
             adb shell pm list packages | grep -F "package:com.jepongdevxyz.devxyzsamplekotlin"
             adb shell monkey -p com.jepongdevxyz.devxyzsamplekotlin -c android.intent.category.LAUNCHER 1
             sleep 3

@@ -17,6 +17,8 @@ for token in (
     'BUILD &amp; RUN',
     'BUILT-IN TOOLS',
     'SETTINGS',
+    'android:id="@+id/workspace_search"',
+    'android:id="@+id/workspace_git"',
     'android:id="@+id/buildButton"',
     'android:id="@+id/settingsButton"',
     'android:id="@+id/developerToolsButton"',
@@ -28,18 +30,22 @@ for token in (
 ):
     require(token in layout, "Landscape reference UI missing: %s" % token)
 
-for legacy in ('android:text="Save"', 'android:text="Save All"', 'android:text="Complete"', 'android:text="Actions"', 'BUILD &amp; TOOLS', 'MORE / SETTINGS'):
+for legacy in ('BUILD &amp; TOOLS', 'MORE / SETTINGS'):
     require(legacy not in layout, "Landscape still exposes legacy UI: %s" % legacy)
 
-# Workspace surfaces intentionally start GONE and are shown by navigation. Only the final 1dp
-# compatibility holder is permanently hidden, so authoritative controls must occur before it.
+# Save/Save All/Complete/Actions are intentional real editor controls in the approved UI.
+for label in ('android:text="Save"', 'android:text="Save All"', 'android:text="Complete"', 'android:text="Actions"'):
+    require(label in layout, "Landscape editor toolbar missing: %s" % label)
+
 hidden_marker = '<LinearLayout android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone">'
-hidden_at = layout.rfind(hidden_marker)
-require(hidden_at >= 0, "Landscape hidden compatibility holder missing")
-for control in ('buildButton', 'settingsButton', 'developerToolsButton', 'projectSettingsButton'):
+require(hidden_marker not in layout, "Landscape must not keep a hidden compatibility holder")
+
+for control in ('createProjectButton', 'newFileButton', 'newFolderButton', 'recentProjectsButton', 'importButton',
+                'searchButton', 'projectSearchButton', 'saveButton', 'saveAllButton', 'completionButton',
+                'editorActionsButton', 'problemsButton', 'buildButton', 'installButton', 'buildActionsButton',
+                'terminalButton', 'gitButton', 'signApkButton', 'developerToolsButton', 'projectSettingsButton',
+                'settingsButton', 'backupButton', 'toolchainButton', 'sdkManagerButton', 'runtimeButton'):
     token = 'android:id="@+id/%s"' % control
-    pos = layout.find(token)
-    require(pos >= 0 and pos < hidden_at, "%s must be a visible authoritative control" % control)
-    require(layout.find(token, pos + 1) < 0, "%s must only exist once" % control)
+    require(layout.count(token) == 1, "%s must exist exactly once as an authoritative landscape control" % control)
 
 print("REFERENCE EXACT LANDSCAPE UI CONTRACT PASSED")

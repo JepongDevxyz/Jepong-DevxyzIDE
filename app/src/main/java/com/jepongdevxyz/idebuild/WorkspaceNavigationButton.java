@@ -33,11 +33,9 @@ public final class WorkspaceNavigationButton extends Button {
         if (id == R.id.nav_files) {
             show(root, R.id.workspace_files);
         } else if (id == R.id.nav_search) {
-            show(root, R.id.workspace_files);
-            runAction(root, R.id.searchButton);
+            show(root, R.id.workspace_search);
         } else if (id == R.id.nav_git) {
-            show(root, R.id.workspace_files);
-            runAction(root, R.id.gitButton);
+            show(root, R.id.workspace_git);
         } else if (id == R.id.nav_build_tools) {
             show(root, R.id.workspace_build_tools);
         } else if (id == R.id.nav_more) {
@@ -47,6 +45,8 @@ public final class WorkspaceNavigationButton extends Button {
 
     private static void show(View root, int target) {
         visible(root, R.id.workspace_files, target == R.id.workspace_files);
+        visible(root, R.id.workspace_search, target == R.id.workspace_search);
+        visible(root, R.id.workspace_git, target == R.id.workspace_git);
         visible(root, R.id.workspace_build_tools, target == R.id.workspace_build_tools);
         visible(root, R.id.workspace_more, target == R.id.workspace_more);
     }
@@ -54,10 +54,5 @@ public final class WorkspaceNavigationButton extends Button {
     private static void visible(View root, int id, boolean yes) {
         View v = root.findViewById(id);
         if (v != null) v.setVisibility(yes ? View.VISIBLE : View.GONE);
-    }
-
-    private static void runAction(View root, int id) {
-        View v = root.findViewById(id);
-        if (v != null && v.isEnabled()) v.performClick();
     }
 }

@@ -95,17 +95,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics
-          script: |
-            set -euo pipefail
-            APK="$(find verified-artifact -type f -name 'app-debug.apk' -print -quit)"
-            test -s "$APK"
-            adb wait-for-device
-            adb install -r "$APK" | tee emulator-install.txt
-            grep -Fx Success emulator-install.txt
-            adb shell am start -W -n com.jepongdevxyz.idebuild/com.jepongdevxyz.idebuild.SplashActivity | tee emulator-launch.txt
-            grep -F 'Status: ok' emulator-launch.txt
-            sleep 6
-            adb shell ps -A | grep -F com.jepongdevxyz.idebuild
+          script: bash -euo pipefail -c 'APK="$(find verified-artifact -type f -name "app-debug.apk" -print -quit)"; test -s "$APK"; adb wait-for-device; adb install -r "$APK" | tee emulator-install.txt; grep -Fx Success emulator-install.txt; adb shell am start -W -n com.jepongdevxyz.idebuild/com.jepongdevxyz.idebuild.SplashActivity | tee emulator-launch.txt; grep -F "Status: ok" emulator-launch.txt; sleep 6; adb shell ps -A | grep -F com.jepongdevxyz.idebuild'
 
   release_bundle:
     name: Package verified source ZIP

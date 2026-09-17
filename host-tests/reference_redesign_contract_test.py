@@ -11,7 +11,8 @@ SPLASH = (ROOT / "app/src/main/res/layout/activity_splash.xml").read_text()
 
 for view_id in (
     "nav_files", "nav_search", "nav_git", "nav_build_tools", "nav_more",
-    "workspace_files", "workspace_editor", "workspace_build_tools", "workspace_more",
+    "workspace_files", "workspace_editor", "workspace_search", "workspace_git",
+    "workspace_build_tools", "workspace_more",
 ):
     assert ("@+id/" + view_id) in PORTRAIT or ("@id/" + view_id) in PORTRAIT, view_id
 
@@ -28,16 +29,15 @@ assert "editorPane" in LAND
 assert "workspace_editor" in LAND
 assert "@color/devxyz_bg" in LAND or "@color/devxyz_surface" in LAND
 
-# Navigation is API-19-safe and self-wiring so existing feature handlers remain authoritative.
+# Navigation is API-19-safe and switches real workspace surfaces. Existing feature buttons remain authoritative inside those surfaces.
 assert "WorkspaceNavigationButton" in PORTRAIT
 assert "WorkspaceNavigationButton" in LAND
 for nav_id in ("nav_files", "nav_search", "nav_git", "nav_build_tools", "nav_more"):
     assert ("R.id." + nav_id) in NAV, nav_id
-assert "R.id.searchButton" in NAV and "performClick()" in NAV
-assert "R.id.gitButton" in NAV
-assert "R.id.workspace_files" in NAV
-assert "R.id.workspace_build_tools" in NAV
-assert "R.id.workspace_more" in NAV
+for workspace_id in ("workspace_files", "workspace_search", "workspace_git", "workspace_build_tools", "workspace_more"):
+    assert ("R.id." + workspace_id) in NAV, workspace_id
+assert "performClick()" not in NAV
+assert "runAction(" not in NAV
 
 assert "DevxyzIDE" in SPLASH
 assert "CODE  •  BUILD  •  CREATE" in SPLASH

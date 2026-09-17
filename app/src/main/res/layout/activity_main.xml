@@ -22,43 +22,54 @@
         <LinearLayout android:id="@+id/tabBar" android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingStart="6dp" android:paddingEnd="6dp" />
     </HorizontalScrollView>
 
-    <LinearLayout android:id="@+id/workspaceBody" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical">
-        <LinearLayout android:id="@+id/projectPane" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="0.36" android:background="@color/devxyz_panel" android:orientation="vertical">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:padding="8dp">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="PROJECT EXPLORER" android:textColor="@color/devxyz_text" android:textStyle="bold" />
-                <Button android:id="@+id/newFileButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:enabled="false" android:text="+ File" />
-                <Button android:id="@+id/newFolderButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:enabled="false" android:text="+ Folder" />
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <LinearLayout android:id="@+id/workspace_files" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+            <LinearLayout android:id="@+id/workspaceBody" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical">
+                <LinearLayout android:id="@+id/project_pane" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="0.36" android:background="@color/devxyz_panel" android:orientation="vertical">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:padding="8dp">
+                        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="PROJECT EXPLORER" android:textColor="@color/devxyz_text" android:textStyle="bold" />
+                        <Button android:id="@+id/newFileButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:enabled="false" android:text="+ File" />
+                        <Button android:id="@+id/newFolderButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:enabled="false" android:text="+ Folder" />
+                    </LinearLayout>
+                    <ListView android:id="@+id/fileList" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="@color/devxyz_line" android:dividerHeight="1dp" />
+                </LinearLayout>
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/devxyz_line" />
+                <LinearLayout android:id="@+id/workspace_editor" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="0.64" android:background="@color/devxyz_bg" android:orientation="vertical">
+                    <com.jepongdevxyz.idebuild.SyntaxEditText android:id="@+id/editor" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@color/devxyz_bg" android:gravity="top|start" android:inputType="textMultiLine|textNoSuggestions" android:textColor="@color/devxyz_text" android:textSize="13sp" android:typeface="monospace" android:padding="10dp" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@color/devxyz_panel_2" android:gravity="center" android:orientation="horizontal">
+                        <Button android:id="@+id/saveButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:enabled="false" android:text="Save" />
+                        <Button android:id="@+id/saveAllButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:enabled="false" android:text="Save All" />
+                        <com.jepongdevxyz.idebuild.CompletionButton android:id="@+id/completionButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Complete" />
+                        <com.jepongdevxyz.idebuild.EditorActionsButton android:id="@+id/editorActionsButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Actions" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
-            <ListView android:id="@+id/fileList" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="@color/devxyz_line" android:dividerHeight="1dp" />
-        </LinearLayout>
-        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/devxyz_line" />
-        <LinearLayout android:id="@+id/editorPane" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="0.64" android:background="@color/devxyz_bg" android:orientation="vertical">
-            <com.jepongdevxyz.idebuild.SyntaxEditText android:id="@+id/editor" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@color/devxyz_bg" android:gravity="top|start" android:inputType="textMultiLine|textNoSuggestions" android:textColor="@color/devxyz_text" android:textSize="13sp" android:typeface="monospace" android:padding="10dp" />
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@color/devxyz_panel_2" android:gravity="center" android:orientation="horizontal">
-                <Button android:id="@+id/saveButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:enabled="false" android:text="Save" />
-                <Button android:id="@+id/saveAllButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:enabled="false" android:text="Save All" />
-                <com.jepongdevxyz.idebuild.CompletionButton android:id="@+id/completionButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Complete" />
-                <com.jepongdevxyz.idebuild.EditorActionsButton android:id="@+id/editorActionsButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Actions" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="108dp" android:background="@color/devxyz_panel_2" android:orientation="vertical">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="7dp" android:text="LOG / PROBLEMS" android:textColor="@color/devxyz_muted" android:textSize="11sp" android:textStyle="bold" />
+                <ScrollView android:id="@+id/consoleScroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+                    <TextView android:id="@+id/consoleText" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="8dp" android:text="DevxyzIDE ready. Create or import an Android project to begin." android:textColor="@color/devxyz_text" android:textSize="11sp" android:typeface="monospace" />
+                </ScrollView>
             </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="108dp" android:background="@color/devxyz_panel_2" android:orientation="vertical">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="7dp" android:text="LOG / PROBLEMS" android:textColor="@color/devxyz_muted" android:textSize="11sp" android:textStyle="bold" />
-        <ScrollView android:id="@+id/consoleScroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-            <TextView android:id="@+id/consoleText" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="8dp" android:text="DevxyzIDE ready. Create or import an Android project to begin." android:textColor="@color/devxyz_text" android:textSize="11sp" android:typeface="monospace" />
-        </ScrollView>
-    </LinearLayout>
-
-    <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@color/devxyz_panel" android:fillViewport="true" android:scrollbars="none">
-        <LinearLayout android:id="@+id/bottomNavigation" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:orientation="horizontal" android:padding="4dp">
-            <Button android:id="@+id/navFiles" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Files" />
-            <Button android:id="@+id/searchButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:enabled="false" android:text="Search" />
-            <com.jepongdevxyz.idebuild.GitButton android:id="@+id/gitButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Git" />
-            <com.jepongdevxyz.idebuild.BuildActionsButton android:id="@+id/buildActionsButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Build / Tools" />
-            <com.jepongdevxyz.idebuild.EditorSettingsButton android:id="@+id/settingsButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="More" />
+        <LinearLayout android:id="@+id/workspace_build_tools" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/devxyz_bg" android:orientation="vertical" android:padding="12dp" android:visibility="gone">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BUILD &amp; TOOLS" android:textColor="@color/devxyz_accent" android:textSize="18sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="6dp" android:text="Real build, diagnostics, install, terminal, signing and toolchain actions." android:textColor="@color/devxyz_muted" />
         </LinearLayout>
-    </HorizontalScrollView>
+
+        <LinearLayout android:id="@+id/workspace_more" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/devxyz_bg" android:orientation="vertical" android:padding="12dp" android:visibility="gone">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="MORE / SETTINGS" android:textColor="@color/devxyz_accent" android:textSize="18sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="6dp" android:text="Project, editor and IDE settings." android:textColor="@color/devxyz_muted" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <LinearLayout android:id="@+id/bottomNavigation" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@color/devxyz_panel" android:gravity="center" android:orientation="horizontal" android:padding="4dp">
+        <Button android:id="@+id/nav_files" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Files" />
+        <Button android:id="@+id/nav_search" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Search" />
+        <Button android:id="@+id/nav_git" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Git" />
+        <Button android:id="@+id/nav_build_tools" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Build" />
+        <Button android:id="@+id/nav_more" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="More" />
+    </LinearLayout>
 
     <LinearLayout android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone">
         <Button android:id="@+id/recentProjectsButton" android:layout_width="1dp" android:layout_height="1dp" />
@@ -72,6 +83,10 @@
         <com.jepongdevxyz.idebuild.DeveloperToolsButton android:id="@+id/developerToolsButton" android:layout_width="1dp" android:layout_height="1dp" />
         <com.jepongdevxyz.idebuild.ProjectSettingsButton android:id="@+id/projectSettingsButton" android:layout_width="1dp" android:layout_height="1dp" />
         <Button android:id="@+id/projectSearchButton" android:layout_width="1dp" android:layout_height="1dp" />
+        <Button android:id="@+id/searchButton" android:layout_width="1dp" android:layout_height="1dp" />
+        <com.jepongdevxyz.idebuild.GitButton android:id="@+id/gitButton" android:layout_width="1dp" android:layout_height="1dp" />
+        <com.jepongdevxyz.idebuild.BuildActionsButton android:id="@+id/buildActionsButton" android:layout_width="1dp" android:layout_height="1dp" />
+        <com.jepongdevxyz.idebuild.EditorSettingsButton android:id="@+id/settingsButton" android:layout_width="1dp" android:layout_height="1dp" />
         <Button android:id="@+id/buildButton" android:layout_width="1dp" android:layout_height="1dp" />
         <Button android:id="@+id/problemsButton" android:layout_width="1dp" android:layout_height="1dp" />
         <Button android:id="@+id/installButton" android:layout_width="1dp" android:layout_height="1dp" />

@@ -71,7 +71,8 @@ tap_nav 324 search "SEARCH"
 tap_nav 540 git "SOURCE CONTROL"
 # Expected surface: BUILD & RUN. UiAutomator XML escapes the ampersand in this heading.
 tap_nav 756 build "BUILD &amp; RUN"
-tap_nav 972 more "SETTINGS & RUNTIME"
+# Expected surface: SETTINGS & RUNTIME; XML uses &amp;.
+tap_nav 972 more "SETTINGS &amp; RUNTIME"
 tap_nav 108 files "PROJECT EXPLORER"
 
 adb exec-out screencap -p > devxyz-reference-ui.png

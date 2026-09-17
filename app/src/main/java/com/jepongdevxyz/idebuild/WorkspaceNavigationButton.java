@@ -1,7 +1,9 @@
 package com.jepongdevxyz.idebuild;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.util.AttributeSet;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 
@@ -11,6 +13,14 @@ public final class WorkspaceNavigationButton extends Button {
     public WorkspaceNavigationButton(Context c, AttributeSet a, int s) { super(c, a, s); init(); }
 
     private void init() {
+        setAllCaps(false);
+        setTextSize(11f);
+        setTextColor(Color.rgb(141, 165, 196));
+        setGravity(Gravity.CENTER);
+        setMinHeight(0);
+        setMinWidth(0);
+        setPadding(4, 0, 4, 0);
+        setBackgroundResource(R.drawable.devxyz_nav_button);
         setOnClickListener(new OnClickListener() {
             @Override public void onClick(View v) { navigate(); }
         });
@@ -30,10 +40,8 @@ public final class WorkspaceNavigationButton extends Button {
             runAction(root, R.id.gitButton);
         } else if (id == R.id.nav_build_tools) {
             show(root, R.id.workspace_build_tools);
-            runAction(root, R.id.buildActionsButton);
         } else if (id == R.id.nav_more) {
             show(root, R.id.workspace_more);
-            runAction(root, R.id.settingsButton);
         }
     }
 

@@ -84,6 +84,7 @@ java -cp "$OUT" CacheMaintenanceServiceHostTest
 java -cp "$OUT" SyntaxLanguageServiceHostTest
 java -cp "$OUT" BasicCompletionServiceHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
+python3 "$ROOT/host-tests/import_ui_contract_test.py"
 python3 "$ROOT/host-tests/editor_syntax_contract_test.py"
 python3 "$ROOT/host-tests/editor_actions_contract_test.py"
 python3 "$ROOT/host-tests/editor_gutter_contract_test.py"

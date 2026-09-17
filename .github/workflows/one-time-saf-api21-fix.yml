@@ -19,7 +19,7 @@ jobs:
           ref: feature/devxyzide-01-foundation
           fetch-depth: 0
       - name: Patch MainActivity and remove one-time workflow
-        shell: python
+        shell: python {0}
         run: |
           from pathlib import Path
           p = Path('app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java')
@@ -60,5 +60,3 @@ jobs:
           git add -A
           git commit -m 'fix: guard SAF folder import on API 21+'
           git push origin HEAD:feature/devxyzide-01-foundation
-
-# trigger retry

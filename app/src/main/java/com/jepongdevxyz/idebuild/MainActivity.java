@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.text.Editable;
@@ -296,10 +297,15 @@ public final class MainActivity extends Activity {
     }
 
     private void startFolderPicker() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
+    } else {
+        appendConsole("
+Folder import requires Android 5.0 or newer. ZIP import remains available.");
     }
+}
     private void chooseToolchainPack() { startPicker("application/zip", REQUEST_TOOLCHAIN_PACK); }
     private void chooseRuntimeBootstrap() { startPicker("application/zip", REQUEST_RUNTIME_BOOTSTRAP); }
 

@@ -17,7 +17,9 @@ assert 'IMPORT CANCELED' in controller, 'import cancellation is not surfaced'
 assert 'IMPORT ERROR:' in controller, 'import failures are not surfaced'
 assert 'The partial import was not activated as a project.' in controller
 assert 'public void cancel()' in controller
-assert 'projectImportController.cancel()' in main, 'activity lifecycle must cancel active import safely'
+# MainActivity owns the shared single-thread executor used by imports. Lifecycle teardown
+# must interrupt queued/running project work rather than finish/kill the Activity process.
+assert 'io.shutdownNow()' in main, 'activity lifecycle must stop active background project work safely'
 
 # Recoverable project operations must never terminate the activity/process.
 for forbidden in ('finish();', 'finishAffinity();', 'System.exit(', 'android.os.Process.killProcess('):

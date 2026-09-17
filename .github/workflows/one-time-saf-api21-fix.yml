@@ -1,0 +1,62 @@
+name: One-time SAF API21 source fix
+
+on:
+  push:
+    branches:
+      - feature/devxyzide-01-foundation
+    paths:
+      - .github/workflows/one-time-saf-api21-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/devxyzide-01-foundation
+          fetch-depth: 0
+      - name: Patch MainActivity and remove one-time workflow
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java')
+          s = p.read_text()
+          if 'import android.os.Build;' not in s:
+              s = s.replace('import android.os.Bundle;\n', 'import android.os.Build;\nimport android.os.Bundle;\n')
+          old = '''    private void startFolderPicker() {
+              Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+              intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+              startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
+          }
+          '''
+          new = '''    private void startFolderPicker() {
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                  Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                  intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                  startActivityForResult(intent, REQUEST_IMPORT_FOLDER);
+              } else {
+                  appendConsole("\\nFolder import requires Android 5.0 or newer. ZIP import remains available.");
+              }
+          }
+          '''
+          if old not in s:
+              raise SystemExit('Expected startFolderPicker block not found; refusing blind patch')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          Path('.github/workflows/one-time-saf-api21-fix.yml').unlink()
+      - name: Verify exact contract before commit
+        run: |
+          grep -F 'import android.os.Build;' app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
+          grep -F 'Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP' app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
+          grep -F 'Intent.ACTION_OPEN_DOCUMENT_TREE' app/src/main/java/com/jepongdevxyz/idebuild/MainActivity.java
+          test ! -e .github/workflows/one-time-saf-api21-fix.yml
+      - name: Commit source fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: guard SAF folder import on API 21+'
+          git push origin HEAD:feature/devxyzide-01-foundation

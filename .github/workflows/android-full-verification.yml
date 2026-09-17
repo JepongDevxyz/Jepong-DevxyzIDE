@@ -163,12 +163,7 @@ jobs:
           MISSING_DIR="generated-ci/projects/DevxyzOfflineMissing"
           rm -rf "$MISSING_DIR"
           cp -a generated-ci/projects/DevxyzJavaSample "$MISSING_DIR"
-          cat >> "$MISSING_DIR/app/build.gradle" <<'EOF'
-
-dependencies {
-    implementation 'com.jepongdevxyz.missing:offline-only:0.0.0'
-}
-EOF
+          printf '\ndependencies {\n    implementation '\''com.jepongdevxyz.missing:offline-only:0.0.0'\''\n}\n' >> "$MISSING_DIR/app/build.gradle"
           set +e
           gradle -p "$MISSING_DIR" --offline --no-daemon --stacktrace clean :app:assembleDebug > missing-dependency-offline.log 2>&1
           STATUS=$?

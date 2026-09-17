@@ -30,5 +30,8 @@ require("api-level: 28" in workflows, "Signed APK must pass the repository's pro
 require("targetSdkVersion:'29'" in workflows, "Release gate must preserve targetSdk 29 metadata verification")
 require("DevxyzIDE-v0.6.1-signed-candidate" in workflows, "Signed candidate must be preserved before the runtime gate")
 require("device-apk-signing.txt" in workflows, "Release gate must preserve APK signing verification evidence")
+require("install_apk()" in workflows, "Full emulator gate must use the bounded APK install helper")
+require("timeout 120 adb install -r" in workflows, "Emulator APK installs must have a hard timeout instead of hanging the entire job")
+require("adb kill-server" in workflows and "adb start-server" in workflows, "Timed-out emulator installs must recover the ADB server before retrying")
 
 print("RELEASE BUNDLE CONTRACT TESTS PASSED")

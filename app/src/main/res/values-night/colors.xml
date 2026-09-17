@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="devxyz_bg">#070B16</color>
+    <color name="devxyz_panel">#0D1426</color>
+    <color name="devxyz_panel_2">#111B31</color>
+    <color name="devxyz_text">#F3F7FF</color>
+    <color name="devxyz_muted">#94A3B8</color>
+    <color name="devxyz_cyan">#00D9FF</color>
+    <color name="devxyz_blue">#2675FF</color>
+    <color name="devxyz_violet">#8957FF</color>
+    <color name="devxyz_line">#22304A</color>
+    <color name="devxyz_error">#FF647C</color>
+    <color name="devxyz_success">#4ADE80</color>
+</resources>

@@ -1,76 +1,57 @@
-# DevxyzIDE v0.6 Verification Report
+# DevxyzIDE Phase 01 Verification Report
 
-Date: 2026-09-14  
+Date: 2026-09-16  
 Application ID: `com.jepongdevxyz.idebuild`
 
-## Host verification suite
+## Verified automated release gate
 
-Command:
+The current release-candidate workflow verifies the exact branch commit before producing the verified-source artifact.
 
-```sh
-./host-tests/run.sh
-```
+### 1. Host/runtime verification
 
-Expected fresh result for this source snapshot:
+`host-tests/run.sh` compiles and executes the portable Java host tests and Python source contracts. Coverage includes safe ZIP import, project paths and file operations, project templates, build planning, APK/AAB output scanning, runtime/toolchain selection, editor state/settings/search, diagnostics, process cancellation, terminal planning, real Git operations, APK signing helpers, cache maintenance, syntax helpers and completion helpers.
 
-```text
-HOST SELF-TESTS PASSED: 23/23
-SOURCE CONTRACT TESTS PASSED
-RUNTIME PACK TOOL TESTS PASSED
-BOOTSTRAP STAMP TESTS PASSED
-```
+### 2. Real DevxyzIDE host APK build
 
-Core coverage includes:
+GitHub Actions builds DevxyzIDE with the repository's AIDE-compatible host configuration:
 
-- safe project ZIP extraction and ZIP-slip rejection
-- generated/cache filtering
-- project file listing
-- Gradle/AGP/SDK analysis
-- AndroidX/Kotlin/Compose/native indicators
-- custom Maven URL discovery with credential redaction
-- Gradle/JDK compatibility selection
-- wrapper/cache/aapt2 build planning
-- missing-toolchain blockers
-- version catalog analysis
-- component toolchain inventory
-- verified inner toolchain pack installation
-- HTTPS outer runtime descriptor / checksum validation
-- atomic runtime pack download/install pipeline
-- host targetSdk execution-policy boundary
-- Termux-style `files/usr` + `files/home/android-sdk` runtime discovery
-- package-specific terminal bootstrap install + symlink recreation
+- Android SDK 28
+- Android Build Tools 28.0.3
+- Gradle 4.6
+- Android Gradle Plugin 3.2.1
+- JDK 8 for the host build
 
-Source-contract coverage includes Sora Editor 0.24.6, portrait/landscape CodeEditor layouts, runtime bootstrap UI wiring, final applicationId, targetSdk 28, and the pinned runtime-builder source revision.
+The workflow then verifies:
 
-## Zen Injector regression probe
+- `app-debug.apk` exists and is structurally valid;
+- package ID is `com.jepongdevxyz.idebuild`;
+- a CI copy can be signed with the real Android SDK `apksigner`;
+- the signed APK passes signature verification.
 
-The cleaned test project is recognized as:
+### 3. Generated-project end-to-end builds
 
-```text
-Gradle=7.4.2
-AGP=7.2.1
-compileSdk=34
-minSdk=21
-targetSdk=34
-AndroidX=true
-Kotlin=false
-Compose=true
-Native=false
-KotlinDSL=false
-VersionCatalog=false
-wrapperComplete=true
-recommendedJdk=11
-```
+The workflow generates Java and Kotlin sample Android projects using DevxyzIDE production template code, then builds both with Gradle 8.9 and Android SDK 35. It additionally verifies cached offline rebuilds, a deliberate missing-dependency failure in offline mode, navigable diagnostics from deliberately broken Java source, APK ZIP integrity and the generated package IDs.
 
-Its repository list includes Google, Maven Central, Maven Local, JitPack, and its custom Maven URLs. DevxyzIDE preserves these and leaves dependency resolution to Gradle.
+### 4. Android emulator install and launch
 
-## Not verified in this environment
+After the host and generated-project jobs pass, the workflow boots an API 28 x86_64 Android emulator and verifies installation and launch of:
 
-- compiling the DevxyzIDE Android APK with a full Android SDK
-- installing it on an ARM Android phone
-- executing the custom-prefix terminal/JDK runtime on-device
-- running Zen Injector's actual Gradle Wrapper on the phone
-- downloading its live Maven dependencies
-- producing/signing/installing its final APK
+- DevxyzIDE;
+- the generated Java sample;
+- the generated Kotlin sample.
 
-Those items require the physical Android/ARM test gate and must not be reported as passing until observed there.
+### 5. Verified-source packaging
+
+Only after the emulator gate passes, CI exports the exact tested commit into `DevxyzIDE-verified-source.zip`, embeds verification metadata, runs a ZIP integrity test, generates a SHA-256 checksum and uploads the result as a workflow artifact.
+
+## Current editor/runtime scope
+
+The AIDE-compatible host intentionally uses the platform Android editor path rather than claiming a bundled Sora/LSP editor. Multi-tab editing, Save All, autosave, font size, word wrap, tab width, search/replace, project search, syntax helpers and completion helpers are implemented within the current host architecture.
+
+Build, Terminal, Git and APK signing are capability-gated. They are enabled only when the required real project/runtime tools are available; missing components are reported instead of simulating success.
+
+## Physical ARM64 boundary
+
+The automated release gate proves the tested source, host APK build, generated Java/Kotlin project builds, offline cache behavior, APK signing/validation and API 28 emulator install/launch path.
+
+The optional full on-phone JDK/Gradle/Android SDK/native runtime still requires an actual ARM64 Android device for final device-specific evidence. That separate physical test must cover runtime installation, project Gradle execution, dependency resolution, APK/AAB generation and install/launch of the project built inside DevxyzIDE. Arbitrary third-party projects can also fail for external reasons such as unavailable repositories, invalid credentials, unsupported plugins or incompatible ABIs.

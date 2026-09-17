@@ -1,0 +1,60 @@
+name: DevxyzIDE Large Import Stress
+
+on:
+  workflow_dispatch:
+    inputs:
+      expanded_bytes:
+        description: Expanded project payload size in bytes
+        required: true
+        default: "1073741824"
+
+jobs:
+  streaming-import-stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Show disk and memory before test
+        run: |
+          df -h .
+          free -h
+
+      - name: Compile streaming import stress harness
+        run: |
+          rm -rf host-tests/stress-out
+          mkdir -p host-tests/stress-out
+          javac -d host-tests/stress-out \
+            app/src/main/java/com/jepongdevxyz/idebuild/core/SafeZip.java \
+            app/src/main/java/com/jepongdevxyz/idebuild/core/ProjectRootDetector.java \
+            app/src/main/java/com/jepongdevxyz/idebuild/core/ProjectImportService.java \
+            host-tests/ProjectImportStressHostTest.java
+
+      - name: Run 1 GiB-class streaming import
+        env:
+          STRESS_BYTES: ${{ inputs.expanded_bytes }}
+        run: |
+          case "$STRESS_BYTES" in
+            ''|*[!0-9]*) echo "expanded_bytes must be an integer" >&2; exit 2 ;;
+          esac
+          if [ "$STRESS_BYTES" -lt 1048576 ] || [ "$STRESS_BYTES" -gt 2147483648 ]; then
+            echo "expanded_bytes must be between 1 MiB and 2 GiB" >&2
+            exit 2
+          fi
+          /usr/bin/time -v java -Xmx256m \
+            -Ddevxyz.stress.bytes="$STRESS_BYTES" \
+            -cp host-tests/stress-out ProjectImportStressHostTest
+
+      - name: Show disk and memory after test
+        if: always()
+        run: |
+          df -h .
+          free -h
+          rm -rf host-tests/stress-out

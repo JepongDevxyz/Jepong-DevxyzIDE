@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
+        android:name=".DevxyzApplication"
         android:allowBackup="true"
         android:extractNativeLibs="true"
         android:icon="@mipmap/ic_launcher"
@@ -17,6 +18,21 @@
             android:authorities="${applicationId}.apkprovider"
             android:exported="false"
             android:grantUriPermissions="true" />
+
+        <activity
+            android:name=".ToolchainManagerActivity"
+            android:screenOrientation="unspecified"
+            android:exported="false" />
+
+        <activity
+            android:name=".DeveloperToolsActivity"
+            android:screenOrientation="unspecified"
+            android:exported="false" />
+
+        <activity
+            android:name=".ApkSigningActivity"
+            android:screenOrientation="unspecified"
+            android:exported="false" />
 
         <activity
             android:name=".MainActivity"

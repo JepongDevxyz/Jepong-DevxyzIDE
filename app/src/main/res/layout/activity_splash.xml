@@ -1,14 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/devxyz_bg">
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="#050D18">
 
     <ImageView
-        android:id="@+id/splashImage"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="156dp"
+        android:layout_height="156dp"
         android:contentDescription="@string/app_name"
-        android:scaleType="centerCrop"
-        android:src="@drawable/splash_screen" />
-</FrameLayout>
+        android:src="@mipmap/ic_launcher" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="DevxyzIDE"
+        android:textColor="#F4F8FF"
+        android:textSize="34sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="CODE  •  BUILD  •  CREATE"
+        android:textColor="#20E3FF"
+        android:textSize="13sp"
+        android:letterSpacing="0.12" />
+
+    <ProgressBar
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="180dp"
+        android:layout_height="4dp"
+        android:layout_marginTop="42dp"
+        android:indeterminate="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="Powered by Jepong Devxyz"
+        android:textColor="#8DA5C4"
+        android:textSize="12sp" />
+</LinearLayout>

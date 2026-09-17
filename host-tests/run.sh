@@ -9,13 +9,95 @@ javac -d "$OUT" \
   "$ROOT/host-tests/HostSelfTest.java" \
   "$ROOT/host-tests/HybridHostTest.java" \
   "$ROOT/host-tests/RuntimeCatalogHostTest.java" \
+  "$ROOT/host-tests/ProjectPathHostTest.java" \
+  "$ROOT/host-tests/WorkspacePathResolverHostTest.java" \
+  "$ROOT/host-tests/ProjectDirectoryServiceHostTest.java" \
+  "$ROOT/host-tests/ProjectFileServiceHostTest.java" \
+  "$ROOT/host-tests/ProjectTemplateGeneratorHostTest.java" \
+  "$ROOT/host-tests/ProjectArchiveServiceHostTest.java" \
+  "$ROOT/host-tests/ProjectImportServiceHostTest.java" \
+  "$ROOT/host-tests/ProjectImportUnlimitedHostTest.java" \
+  "$ROOT/host-tests/SafeZipCancellationHostTest.java" \
+  "$ROOT/host-tests/ProjectImportStressHostTest.java" \
+  "$ROOT/host-tests/BuildPlannerHostTest.java" \
+  "$ROOT/host-tests/BuildTaskPolicyHostTest.java" \
+  "$ROOT/host-tests/BuildOutputScannerHostTest.java" \
+  "$ROOT/host-tests/ApkLocatorHostTest.java" \
+  "$ROOT/host-tests/RuntimePackDownloaderCancellationHostTest.java" \
+  "$ROOT/host-tests/EditorSessionHostTest.java" \
+  "$ROOT/host-tests/EditorSettingsHostTest.java" \
+  "$ROOT/host-tests/AppAppearanceSettingsHostTest.java" \
+  "$ROOT/host-tests/EditorUndoHistoryHostTest.java" \
+  "$ROOT/host-tests/TextSearchServiceHostTest.java" \
+  "$ROOT/host-tests/ProjectSearchServiceHostTest.java" \
+  "$ROOT/host-tests/BuildDiagnosticsParserHostTest.java" \
+  "$ROOT/host-tests/ProcessEngineHostTest.java" \
+  "$ROOT/host-tests/TerminalCommandPlannerHostTest.java" \
+  "$ROOT/host-tests/GitServiceHostTest.java" \
+  "$ROOT/host-tests/CapabilityRegistryHostTest.java" \
+  "$ROOT/host-tests/ApkSignerServiceHostTest.java" \
+  "$ROOT/host-tests/ApkSignerLocatorHostTest.java" \
+  "$ROOT/host-tests/ResourceIndexServiceHostTest.java" \
+  "$ROOT/host-tests/SqlQueryGuardHostTest.java" \
+  "$ROOT/host-tests/BoundedLogBufferHostTest.java" \
+  "$ROOT/host-tests/CacheMaintenanceServiceHostTest.java" \
+  "$ROOT/host-tests/SyntaxLanguageServiceHostTest.java" \
+  "$ROOT/host-tests/BasicCompletionServiceHostTest.java" \
   $CORE_SOURCES \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/ApkLocator.java" \
   "$ROOT/app/src/main/java/com/jepongdevxyz/idebuild/BuildRunner.java"
 java -cp "$OUT" HostSelfTest
 java -cp "$OUT" HybridHostTest
 java -cp "$OUT" RuntimeCatalogHostTest
+java -cp "$OUT" ProjectPathHostTest
+java -cp "$OUT" WorkspacePathResolverHostTest
+java -cp "$OUT" ProjectDirectoryServiceHostTest
+java -cp "$OUT" ProjectFileServiceHostTest
+java -cp "$OUT" ProjectTemplateGeneratorHostTest
+java -cp "$OUT" ProjectArchiveServiceHostTest
+java -cp "$OUT" ProjectImportServiceHostTest
+java -cp "$OUT" ProjectImportUnlimitedHostTest
+java -cp "$OUT" SafeZipCancellationHostTest
+java -cp "$OUT" ProjectImportStressHostTest
+java -cp "$OUT" BuildPlannerHostTest
+java -cp "$OUT" BuildTaskPolicyHostTest
+java -cp "$OUT" BuildOutputScannerHostTest
+java -cp "$OUT" ApkLocatorHostTest
+java -cp "$OUT" RuntimePackDownloaderCancellationHostTest
+java -cp "$OUT" EditorSessionHostTest
+java -cp "$OUT" EditorSettingsHostTest
+java -cp "$OUT" AppAppearanceSettingsHostTest
+java -cp "$OUT" EditorUndoHistoryHostTest
+java -cp "$OUT" TextSearchServiceHostTest
+java -cp "$OUT" ProjectSearchServiceHostTest
+java -cp "$OUT" BuildDiagnosticsParserHostTest
+java -cp "$OUT" ProcessEngineHostTest
+java -cp "$OUT" TerminalCommandPlannerHostTest
+java -cp "$OUT" GitServiceHostTest
+java -cp "$OUT" CapabilityRegistryHostTest
+java -cp "$OUT" ApkSignerServiceHostTest
+java -cp "$OUT" ApkSignerLocatorHostTest
+java -cp "$OUT" ResourceIndexServiceHostTest
+java -cp "$OUT" SqlQueryGuardHostTest
+java -cp "$OUT" BoundedLogBufferHostTest
+java -cp "$OUT" CacheMaintenanceServiceHostTest
+java -cp "$OUT" SyntaxLanguageServiceHostTest
+java -cp "$OUT" BasicCompletionServiceHostTest
 python3 "$ROOT/host-tests/source_contract_test.py"
+python3 "$ROOT/host-tests/import_ui_contract_test.py"
+python3 "$ROOT/host-tests/editor_syntax_contract_test.py"
+python3 "$ROOT/host-tests/editor_actions_contract_test.py"
+python3 "$ROOT/host-tests/editor_gutter_contract_test.py"
+python3 "$ROOT/host-tests/editor_settings_contract_test.py"
+python3 "$ROOT/host-tests/project_wizard_contract_test.py"
+python3 "$ROOT/host-tests/recent_projects_contract_test.py"
+python3 "$ROOT/host-tests/developer_tools_contract_test.py"
+python3 "$ROOT/host-tests/project_settings_contract_test.py"
+python3 "$ROOT/host-tests/build_actions_contract_test.py"
+python3 "$ROOT/host-tests/terminal_log_contract_test.py"
+python3 "$ROOT/host-tests/git_ui_contract_test.py"
+python3 "$ROOT/host-tests/capability_registry_contract_test.py"
+python3 "$ROOT/host-tests/release_bundle_contract_test.py"
 python3 "$ROOT/host-tests/runtime_pack_tool_test.py"
 python3 "$ROOT/host-tests/bootstrap_stamp_test.py"
 python3 "$ROOT/host-tests/runtime_builder_contract_test.py"

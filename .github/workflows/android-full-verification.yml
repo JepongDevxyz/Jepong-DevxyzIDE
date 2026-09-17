@@ -257,7 +257,10 @@ jobs:
           target: default
           profile: pixel_2
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          # Start from a clean snapshot and keep the launcher responsive on
+          # headless API 28 runners; stale Quickstep state previously blocked
+          # DevxyzIDE before the first UI assertion.
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -wipe-data
           script: sh .github/scripts/verify-emulator.sh
 
   release_bundle:

@@ -1,1 +1,2 @@
 Full HYBRID source Android verification trigger.
+SAF API21 compile-safe verification: 2026-09-17.

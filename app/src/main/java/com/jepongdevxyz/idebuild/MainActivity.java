@@ -1210,5 +1210,5 @@ private void chooseToolchainPack() { startPicker("application/zip", REQUEST_TOOL
         @Override public boolean isCancelled() { return cancelled; }
     }
 
-    @Override protected void onDestroy() { cancelActiveProjectSearch(); io.shutdownNow(); super.onDestroy(); }
+    @Override protected void onDestroy() { cancelActiveProjectSearch(); if (projectImportController != null && projectImportController.isBusy()) projectImportController.cancel(); io.shutdownNow(); super.onDestroy(); }
 }

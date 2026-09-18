@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 19290)
+Total output lines: 1214
+
 package com.jepongdevxyz.idebuild;
 
 import android.app.Activity;
@@ -633,81 +636,7 @@ private void chooseToolchainPack() { startPicker("application/zip", REQUEST_TOOL
                         String value = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
                         if (value.length() == 0) { appendConsole("CREATE ERROR: Name must not be blank"); return; }
                         createProjectEntry(directory, value);
-                    }
-                }).show();
-    }
-
-    private void createProjectEntry(final boolean directory, final String name) {
-        final ProjectFileService service = fileService; final ProjectPath parent = currentDirectory;
-        if (service == null || parent == null) return;
-        io.execute(new Runnable() { @Override public void run() {
-            try {
-                final ProjectPath created = directory ? service.createDirectory(parent, name) : service.createFile(parent, name);
-                appendConsole((directory ? "Created folder: " : "Created file: ") + created.getRelativePath());
-                runOnUiThread(new Runnable() { @Override public void run() {
-                    if (fileService != service || !sameProjectPath(currentDirectory, parent)) return;
-                    refreshCurrentDirectory(); if (!directory) openProjectFile(created);
-                }});
-            } catch (Exception e) { appendConsole("CREATE ERROR: " + e.getMessage()); }
-        }});
-    }
-
-    private void showEntryActions(final ProjectEntry entry) {
-        final String[] actions = new String[]{"Rename", "Duplicate", "Delete"};
-        new AlertDialog.Builder(this).setTitle(entry.getName()).setItems(actions, new DialogInterface.OnClickListener() {
-            @Override public void onClick(DialogInterface dialog, int which) {
-                if (which == 0) promptRename(entry); else if (which == 1) duplicateEntry(entry); else if (which == 2) confirmDelete(entry);
-            }
-        }).setNegativeButton("Cancel", null).show();
-    }
-
-    private void promptRename(final ProjectEntry entry) {
-        final EditText nameInput = new EditText(this); nameInput.setSingleLine(true); nameInput.setText(entry.getName()); nameInput.setSelection(nameInput.length());
-        new AlertDialog.Builder(this).setTitle("Rename").setView(nameInput).setNegativeButton("Cancel", null)
-                .setPositiveButton("Rename", new DialogInterface.OnClickListener() {
-                    @Override public void onClick(DialogInterface dialog, int which) {
-                        String value = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
-                        if (value.length() == 0) { appendConsole("RENAME ERROR: Name must not be blank"); return; }
-                        renameEntry(entry, value);
-                    }
-                }).show();
-    }
-
-    private void renameEntry(final ProjectEntry entry, final String newName) {
-        final ProjectFileService service = fileService; final ProjectPath parent = currentDirectory; final ProjectPath oldPath = entry.getPath();
-        final WorkspacePathResolver resolver = workspacePathResolver; captureActiveEditorState(); final List<DocumentSaveSnapshot> affected = snapshotDocumentsUnder(oldPath);
-        if (service == null || parent == null) return;
-        io.execute(new Runnable() { @Override public void run() {
-            try {
-                writeSnapshots(affected, resolver); final ProjectPath renamed = service.rename(oldPath, newName);
-                appendConsole("Renamed: " + oldPath.getRelativePath() + " -> " + renamed.getRelativePath());
-                runOnUiThread(new Runnable() { @Override public void run() {
-                    if (fileService != service) return; markSnapshotsSaved(affected); closeDocumentsUnder(oldPath);
-                    if (sameProjectPath(currentDirectory, parent)) refreshCurrentDirectory(); renderActiveEditor();
-                }});
-            } catch (Exception e) { appendConsole("RENAME ERROR: " + e.getMessage()); }
-        }});
-    }
-
-    private void duplicateEntry(final ProjectEntry entry) {
-        final ProjectFileService service = fileService; final ProjectPath parent = currentDirectory; if (service == null || parent == null) return;
-        io.execute(new Runnable() { @Override public void run() {
-            try { ProjectPath duplicate = service.duplicate(entry.getPath()); appendConsole("Duplicated: " + duplicate.getRelativePath());
-                runOnUiThread(new Runnable() { @Override public void run() { if (fileService == service && sameProjectPath(currentDirectory, parent)) refreshCurrentDirectory(); }});
-            } catch (Exception e) { appendConsole("DUPLICATE ERROR: " + e.getMessage()); }
-        }});
-    }
-
-    private void confirmDelete(final ProjectEntry entry) {
-        captureActiveEditorState(); boolean hasDirty = hasDirtyDocumentsUnder(entry.getPath());
-        String detail = entry.isDirectory() ? "Delete this folder and all files inside it? This cannot be undone." : "Delete this file? This cannot be undone.";
-        if (hasDirty) detail += " Unsaved changes in open tabs inside this path will also be discarded.";
-        new AlertDialog.Builder(this).setTitle("Delete " + entry.getName() + "?").setMessage(detail).setNegativeButton("Cancel", null)
-                .setPositiveButton("Delete", new DialogInterface.OnClickListener() { @Override public void onClick(DialogInterface dialog, int which) { deleteEntry(entry); }}).show();
-    }
-
-    private void deleteEntry(final ProjectEntry entry) {
-        final ProjectFileService service = fileService; final ProjectPath parent = currentDirectory; final ProjectPath deletedPath = entry.getPath();
+                …1290 tokens truncated…eService; final ProjectPath parent = currentDirectory; final ProjectPath deletedPath = entry.getPath();
         if (service == null || parent == null) return;
         io.execute(new Runnable() { @Override public void run() {
             try { service.delete(deletedPath); appendConsole("Deleted: " + deletedPath.getRelativePath());
@@ -1210,5 +1139,5 @@ private void chooseToolchainPack() { startPicker("application/zip", REQUEST_TOOL
         @Override public boolean isCancelled() { return cancelled; }
     }
 
-    @Override protected void onDestroy() { cancelActiveProjectSearch(); io.shutdownNow(); super.onDestroy(); }
+    @Override protected void onDestroy() { cancelActiveProjectSearch(); if (projectImportController != null && projectImportController.isBusy()) projectImportController.cancel(); io.shutdownNow(); super.onDestroy(); }
 }

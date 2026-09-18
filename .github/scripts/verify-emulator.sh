@@ -53,9 +53,18 @@ tap_nav() {
 
 install_apk "$DEVXYZ_APK" "DevxyzIDE"
 adb shell pm list packages | grep -F "package:com.jepongdevxyz.idebuild"
-adb shell monkey -p com.jepongdevxyz.idebuild -c android.intent.category.LAUNCHER 1
-sleep 3
-adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.idebuild"
+adb logcat -c || true
+adb shell am start -W -n com.jepongdevxyz.idebuild/.SplashActivity
+i=0
+while [ "$i" -lt 20 ]; do
+  APP_LOG="$(adb logcat -d -t 300 2>/dev/null || true)"
+  echo "$APP_LOG" | grep -E "FATAL EXCEPTION.*com\\.jepongdevxyz\\.idebuild|ANR in com\\.jepongdevxyz\\.idebuild" >/dev/null && { echo "DevxyzIDE crash/ANR detected" >&2; echo "$APP_LOG" >&2; exit 1; }
+  if adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.idebuild/.MainActivity" >/dev/null 2>&1; then break; fi
+  adb shell input keyevent 4 >/dev/null 2>&1 || true
+  i=$((i + 1))
+  sleep 1
+done
+adb shell dumpsys activity activities | grep -F "com.jepongdevxyz.idebuild/.MainActivity"
 
 dump_ui devxyz-files.xml
 require_ui devxyz-files.xml "DevxyzIDE"

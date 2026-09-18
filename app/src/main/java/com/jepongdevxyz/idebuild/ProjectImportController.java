@@ -153,13 +153,31 @@ public final class ProjectImportController {
         if (token != null) token.cancelled = true;
         InputStream stream = activeInput;
         if (stream != null) closeQuietly(stream);
-        activity.runOnUiThread(new Runnable() {
+        postToLiveActivity(new Runnable() {
             @Override public void run() {
                 if (currentText != null) currentText.setText("Canceling safely…");
                 Button button = progressDialog == null ? null : progressDialog.getButton(DialogInterface.BUTTON_NEGATIVE);
                 if (button != null) button.setEnabled(false);
             }
         });
+    }
+
+    private boolean isActivityAlive() {
+        if (activity.isFinishing()) return false;
+        return android.os.Build.VERSION.SDK_INT < 17 || !activity.isDestroyed();
+    }
+
+    private void postToLiveActivity(Runnable action) {
+        if (action == null || !isActivityAlive()) return;
+        activity.runOnUiThread(new LiveActivityRunnable(action));
+    }
+
+    private final class LiveActivityRunnable implements Runnable {
+        private final Runnable action;
+        private LiveActivityRunnable(Runnable action) { this.action = action; }
+        @Override public void run() {
+            if (isActivityAlive()) action.run();
+        }
     }
 
     private boolean beginImport(final String title) {
@@ -169,7 +187,7 @@ public final class ProjectImportController {
             cancellation = new ImportCancellation();
             lastUiProgressAt = 0L;
         }
-        activity.runOnUiThread(new Runnable() {
+        postToLiveActivity(new Runnable() {
             @Override public void run() { showProgressDialog(title); }
         });
         return true;
@@ -220,7 +238,7 @@ public final class ProjectImportController {
         long now = SystemClock.uptimeMillis();
         if (now - lastUiProgressAt < UI_PROGRESS_INTERVAL_MS) return;
         lastUiProgressAt = now;
-        activity.runOnUiThread(new Runnable() {
+        postToLiveActivity(new Runnable() {
             @Override public void run() {
                 if (!busy) return;
                 if (filesText != null) filesText.setText("Files: " + files + " processed");
@@ -244,7 +262,7 @@ public final class ProjectImportController {
     }
 
     private void finishSuccess(final File projectRoot) {
-        activity.runOnUiThread(new Runnable() {
+        postToLiveActivity(new Runnable() {
             @Override public void run() {
                 clearBusyState();
                 listener.onImportMessage("IMPORT COMPLETE: " + projectRoot.getAbsolutePath());
@@ -254,7 +272,7 @@ public final class ProjectImportController {
     }
 
     private void finishFailure(final Exception failure) {
-        activity.runOnUiThread(new Runnable() {
+        postToLiveActivity(new Runnable() {
             @Override public void run() {
                 boolean canceled = failure instanceof ProjectImportService.ImportCanceledException ||
                         (cancellation != null && cancellation.isCancelled());

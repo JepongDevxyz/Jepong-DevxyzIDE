@@ -17,6 +17,13 @@ assert 'IMPORT CANCELED' in controller, 'import cancellation is not surfaced'
 assert 'IMPORT ERROR:' in controller, 'import failures are not surfaced'
 assert 'The partial import was not activated as a project.' in controller
 assert 'public void cancel()' in controller
+
+# Import completion callbacks must be lifecycle-safe. A long ZIP can outlive an
+# Activity recreation/teardown; touching a dead Activity is a real crash/exit path.
+assert 'isActivityAlive()' in controller, 'import controller lacks lifecycle guard'
+assert 'postToLiveActivity(' in controller, 'import callbacks must be posted only to a live Activity'
+assert 'activity.runOnUiThread(new Runnable()' not in controller, 'raw Activity UI posting can target a destroyed Activity'
+
 # MainActivity owns the shared single-thread executor used by imports. Lifecycle teardown
 # must interrupt queued/running project work rather than finish/kill the Activity process.
 assert 'io.shutdownNow()' in main, 'activity lifecycle must stop active background project work safely'

@@ -35,8 +35,20 @@ class ToolchainManager(private val filesDir:File){
  private fun normalizeRoot(staging:File):File{val kids=staging.listFiles()?.filter{it.name!="__MACOSX"}.orEmpty();return if(kids.size==1&&kids[0].isDirectory&&File(kids[0],"jdk").isDirectory)kids[0] else staging}
  private fun validatePackage(root:File){require(File(root,"jdk/bin/java").isFile){"Missing jdk/bin/java"};require(File(root,"android-sdk/platforms/android-35/android.jar").isFile){"Missing Android platform 35"};require(File(root,"android-sdk/build-tools/35.0.0/aapt2").isFile){"Missing build-tools 35.0.0/aapt2"}}
  private fun executable(file:File){require(file.setExecutable(true,false)||file.canExecute()){"Could not mark executable: "+file.path}}
- private fun runtimeProbe():Pair<Boolean,String>{fun run(bin:File,vararg args:String):Pair<Int,String>=runCatching{val p=ProcessBuilder(listOf(bin.absolutePath)+args).redirectErrorStream(true).start();val out=p.inputStream.bufferedReader().readText();p.waitFor() to out}.getOrElse{-1 to ("Execution error: "+it.message)};val j=run(File(javaHome,"bin/java"),"-version");val a=run(File(sdkHome,"build-tools/35.0.0/aapt2"),"version");return (j.first==0&&a.first==0) to ("java -version exit="+j.first+"\n"+j.second.trim()+"\naapt2 version exit="+a.first+"\n"+a.second.trim())}
- private fun deviceAbis():String=runCatching{android.os.Build.SUPPORTED_ABIS?.joinToString().orEmpty()}.getOrDefault("").ifBlank{"unknown / JVM test"}
+ private fun runtimeProbe():Pair<Boolean,String>{
+  fun exec(bin:File,vararg args:String):Pair<Int,String>{
+   return runCatching{
+    val command=mutableListOf(bin.absolutePath).apply{addAll(args)}
+    val process=ProcessBuilder(command).redirectErrorStream(true).start()
+    val output=process.inputStream.bufferedReader().readText()
+    process.waitFor() to output
+   }.getOrElse{-1 to ("Execution error: "+it.message)}
+  }
+  val javaResult=exec(File(javaHome,"bin/java"),"-version")
+  val aaptResult=exec(File(sdkHome,"build-tools/35.0.0/aapt2"),"version")
+  val report="java -version exit="+javaResult.first+"\n"+javaResult.second.trim()+"\naapt2 version exit="+aaptResult.first+"\n"+aaptResult.second.trim()
+  return (javaResult.first==0&&aaptResult.first==0) to report
+ }
  fun aapt2Path():String=File(sdkHome,"build-tools/35.0.0/aapt2").absolutePath
  fun environment():Map<String,String>{val old=System.getenv("PATH")?:"";return mapOf("JAVA_HOME" to javaHome.path,"ANDROID_HOME" to sdkHome.path,"ANDROID_SDK_ROOT" to sdkHome.path,"PATH" to (javaHome.path+"/bin:"+sdkHome.path+"/platform-tools:"+sdkHome.path+"/build-tools/35.0.0:"+old),"GRADLE_USER_HOME" to File(home,"gradle-home").path)}
 }

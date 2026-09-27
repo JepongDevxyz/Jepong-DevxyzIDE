@@ -14,9 +14,9 @@ class ToolchainManager(private val filesDir:File){
  fun inspect(project:File?):ToolchainCheck{
   val lines=mutableListOf<String>();val gradlew=project?.let{File(it,"gradlew")};val java=File(javaHome,"bin/java");val androidJar=File(sdkHome,"platforms/android-35/android.jar");val aapt2=File(sdkHome,"build-tools/35.0.0/aapt2")
   fun mark(name:String,ok:Boolean,path:File?){lines+=(if(ok)"OK  " else "MISS ")+name+(path?.let{"\n  "+it.path}?:"")}
-  mark("Project Gradle wrapper",gradlew?.isFile==true,gradlew);mark("Embedded JDK 17 runtime",java.isFile,java);mark("Android SDK platform 35",androidJar.isFile,androidJar);mark("Android build-tools / aapt2",aapt2.isFile,aapt2)
+  val javaOk=java.isFile&&java.canExecute();val aaptOk=aapt2.isFile&&aapt2.canExecute();mark("Project Gradle wrapper",gradlew?.isFile==true,gradlew);mark("Embedded JDK 17 runtime",javaOk,java);mark("Android SDK platform 35",androidJar.isFile,androidJar);mark("Android build-tools / aapt2",aaptOk,aapt2)
   lines+="Device ABI: "+deviceAbis();lines+="Toolchain root: "+home.path
-  return ToolchainCheck(gradlew?.isFile==true&&java.isFile&&androidJar.isFile&&aapt2.isFile,lines.joinToString("\n"))
+  return ToolchainCheck(gradlew?.isFile==true&&javaOk&&androidJar.isFile&&aaptOk,lines.joinToString("\n"))
  }
  fun install(resolver:ContentResolver,uri:Uri):ToolchainInstallResult=runCatching{
   val staging=File(filesDir,"toolchain-staging-"+System.currentTimeMillis()).apply{mkdirs()}
@@ -28,13 +28,28 @@ class ToolchainManager(private val filesDir:File){
    val backup=File(filesDir,"toolchain-backup");backup.deleteRecursively();if(home.exists())require(home.renameTo(backup)){"Could not prepare existing toolchain"}
    require(root.renameTo(home)){"Could not activate toolchain"};backup.deleteRecursively()
    executable(File(javaHome,"bin/java"));executable(File(sdkHome,"build-tools/35.0.0/aapt2"));File(sdkHome,"platform-tools/adb").takeIf{it.exists()}?.let(::executable)
-   ToolchainInstallResult(true,"Toolchain package installed.\n"+inspect(null).report)
+   val runtime=runtimeProbe();require(runtime.first){"Toolchain files installed but Android runtime probe failed:\n"+runtime.second}
+   ToolchainInstallResult(true,"Toolchain package installed and executable.\n"+runtime.second+"\n"+inspect(null).report)
   }finally{staging.takeIf{it.exists()}?.deleteRecursively()}
  }.getOrElse{ToolchainInstallResult(false,"Toolchain was not changed.\n"+(it.message?:"Unknown error"))}
  private fun normalizeRoot(staging:File):File{val kids=staging.listFiles()?.filter{it.name!="__MACOSX"}.orEmpty();return if(kids.size==1&&kids[0].isDirectory&&File(kids[0],"jdk").isDirectory)kids[0] else staging}
  private fun validatePackage(root:File){require(File(root,"jdk/bin/java").isFile){"Missing jdk/bin/java"};require(File(root,"android-sdk/platforms/android-35/android.jar").isFile){"Missing Android platform 35"};require(File(root,"android-sdk/build-tools/35.0.0/aapt2").isFile){"Missing build-tools 35.0.0/aapt2"}}
- private fun executable(file:File){file.setExecutable(true,false)}
+ private fun executable(file:File){require(file.setExecutable(true,false)||file.canExecute()){"Could not mark executable: "+file.path}}
  private fun deviceAbis():String=runCatching{android.os.Build.SUPPORTED_ABIS?.joinToString().orEmpty()}.getOrDefault("").ifBlank{"unknown / JVM test"}
+ private fun runtimeProbe():Pair<Boolean,String>{
+  fun exec(bin:File,vararg args:String):Pair<Int,String>{
+   return runCatching{
+    val command=mutableListOf(bin.absolutePath).apply{addAll(args)}
+    val process=ProcessBuilder(command).redirectErrorStream(true).start()
+    val output=process.inputStream.bufferedReader().readText()
+    process.waitFor() to output
+   }.getOrElse{-1 to ("Execution error: "+it.message)}
+  }
+  val javaResult=exec(File(javaHome,"bin/java"),"-version")
+  val aaptResult=exec(File(sdkHome,"build-tools/35.0.0/aapt2"),"version")
+  val report="java -version exit="+javaResult.first+"\n"+javaResult.second.trim()+"\naapt2 version exit="+aaptResult.first+"\n"+aaptResult.second.trim()
+  return (javaResult.first==0&&aaptResult.first==0) to report
+ }
  fun aapt2Path():String=File(sdkHome,"build-tools/35.0.0/aapt2").absolutePath
  fun environment():Map<String,String>{val old=System.getenv("PATH")?:"";return mapOf("JAVA_HOME" to javaHome.path,"ANDROID_HOME" to sdkHome.path,"ANDROID_SDK_ROOT" to sdkHome.path,"PATH" to (javaHome.path+"/bin:"+sdkHome.path+"/platform-tools:"+sdkHome.path+"/build-tools/35.0.0:"+old),"GRADLE_USER_HOME" to File(home,"gradle-home").path)}
 }

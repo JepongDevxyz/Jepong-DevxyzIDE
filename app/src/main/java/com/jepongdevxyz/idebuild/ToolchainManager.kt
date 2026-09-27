@@ -35,6 +35,7 @@ class ToolchainManager(private val filesDir:File){
  private fun normalizeRoot(staging:File):File{val kids=staging.listFiles()?.filter{it.name!="__MACOSX"}.orEmpty();return if(kids.size==1&&kids[0].isDirectory&&File(kids[0],"jdk").isDirectory)kids[0] else staging}
  private fun validatePackage(root:File){require(File(root,"jdk/bin/java").isFile){"Missing jdk/bin/java"};require(File(root,"android-sdk/platforms/android-35/android.jar").isFile){"Missing Android platform 35"};require(File(root,"android-sdk/build-tools/35.0.0/aapt2").isFile){"Missing build-tools 35.0.0/aapt2"}}
  private fun executable(file:File){require(file.setExecutable(true,false)||file.canExecute()){"Could not mark executable: "+file.path}}
+ private fun deviceAbis():String=runCatching{android.os.Build.SUPPORTED_ABIS?.joinToString().orEmpty()}.getOrDefault("").ifBlank{"unknown / JVM test"}
  private fun runtimeProbe():Pair<Boolean,String>{
   fun exec(bin:File,vararg args:String):Pair<Int,String>{
    return runCatching{

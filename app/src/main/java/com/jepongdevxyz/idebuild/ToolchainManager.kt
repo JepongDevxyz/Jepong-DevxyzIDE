@@ -35,6 +35,6 @@ class ToolchainManager(private val filesDir:File){
  private fun validatePackage(root:File){require(File(root,"jdk/bin/java").isFile){"Missing jdk/bin/java"};require(File(root,"android-sdk/platforms/android-35/android.jar").isFile){"Missing Android platform 35"};require(File(root,"android-sdk/build-tools/35.0.0/aapt2").isFile){"Missing build-tools 35.0.0/aapt2"}}
  private fun executable(file:File){file.setExecutable(true,false)}
  private fun deviceAbis():String=runCatching{android.os.Build.SUPPORTED_ABIS?.joinToString().orEmpty()}.getOrDefault("").ifBlank{"unknown / JVM test"}
- fun aapt2Path():String=File(sdk,"build-tools/35.0.0/aapt2").absolutePath
+ fun aapt2Path():String=File(sdkHome,"build-tools/35.0.0/aapt2").absolutePath
  fun environment():Map<String,String>{val old=System.getenv("PATH")?:"";return mapOf("JAVA_HOME" to javaHome.path,"ANDROID_HOME" to sdkHome.path,"ANDROID_SDK_ROOT" to sdkHome.path,"PATH" to (javaHome.path+"/bin:"+sdkHome.path+"/platform-tools:"+sdkHome.path+"/build-tools/35.0.0:"+old),"GRADLE_USER_HOME" to File(home,"gradle-home").path)}
 }

@@ -1,9 +1,63 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@color/navy">
- <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:paddingHorizontal="16dp"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="DevxyzIDE" android:textColor="@color/text" android:textStyle="bold" android:textSize="20sp"/><Button android:id="@+id/importBtn" android:layout_width="wrap_content" android:layout_height="44dp" android:text="Import" android:textAllCaps="false"/></LinearLayout>
- <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:padding="8dp">
-  <LinearLayout android:id="@+id/explorerPane" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="0.38" android:orientation="vertical" android:background="@drawable/panel" android:padding="8dp"><TextView android:layout_width="match_parent" android:layout_height="40dp" android:gravity="center_vertical" android:text="PROJECT EXPLORER" android:textColor="@color/text" android:textStyle="bold"/><ListView android:id="@+id/fileList" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:dividerHeight="0dp"/></LinearLayout>
-  <Space android:layout_width="8dp" android:layout_height="1dp"/>
-  <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="0.62" android:orientation="vertical" android:background="@drawable/panel"><TextView android:id="@+id/tabTitle" android:layout_width="match_parent" android:layout_height="42dp" android:paddingHorizontal="12dp" android:gravity="center_vertical" android:text="Welcome" android:textColor="@color/cyan" android:textStyle="bold"/><EditText android:id="@+id/editor" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="top|start" android:padding="12dp" android:fontFamily="monospace" android:textSize="13sp" android:textColor="@color/text" android:textColorHint="@color/muted" android:hint="Open or import a project to start coding…" android:background="@android:color/transparent" android:inputType="textMultiLine|textNoSuggestions" android:scrollbars="vertical|horizontal"/></LinearLayout>
- </LinearLayout>
- <LinearLayout android:layout_width="match_parent" android:layout_height="62dp" android:gravity="center" android:orientation="horizontal"><Button android:id="@+id/filesBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Files" android:textAllCaps="false"/><Button android:id="@+id/searchBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Search" android:textAllCaps="false"/><Button android:id="@+id/saveBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Save" android:textAllCaps="false"/><Button android:id="@+id/buildBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Build" android:textAllCaps="false"/><Button android:id="@+id/toolsBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Tools" android:textAllCaps="false"/></LinearLayout>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/navy">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:paddingHorizontal="16dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Devxyz" android:textColor="@color/text" android:textStyle="bold" android:textSize="20sp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="IDE" android:textColor="@color/cyan" android:textStyle="bold" android:textSize="20sp"/>
+        <TextView android:id="@+id/screenTitle" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="end" android:text="Files" android:textColor="@color/muted"/>
+        <Button android:id="@+id/importBtn" android:layout_width="wrap_content" android:layout_height="42dp" android:text="Import ZIP" android:textAllCaps="false"/>
+    </LinearLayout>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <LinearLayout android:id="@+id/filesPane" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="PROJECT EXPLORER" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
+            <TextView android:id="@+id/projectName" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="No project open" android:textColor="@color/text" android:padding="8dp"/>
+            <ListView android:id="@+id/fileList" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:dividerHeight="0dp"/>
+            <Button android:id="@+id/newProjectBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="+  New Project" android:textAllCaps="false"/>
+            <Button android:id="@+id/importProjectBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Import Project ZIP" android:textAllCaps="false"/>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/editorPane" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/panel" android:visibility="gone">
+            <TextView android:id="@+id/tabTitle" android:layout_width="match_parent" android:layout_height="42dp" android:paddingHorizontal="12dp" android:gravity="center_vertical" android:text="Welcome" android:textColor="@color/cyan" android:textStyle="bold"/>
+            <EditText android:id="@+id/editor" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="top|start" android:padding="12dp" android:fontFamily="monospace" android:textSize="13sp" android:textColor="@color/text" android:textColorHint="@color/muted" android:hint="Open a source file to start coding…" android:background="@android:color/transparent" android:inputType="textMultiLine|textNoSuggestions" android:scrollbars="vertical|horizontal"/>
+            <Button android:id="@+id/saveBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Save File" android:textAllCaps="false"/>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/buildPane" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp" android:visibility="gone">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BUILD &amp; RUN" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
+            <TextView android:id="@+id/buildStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ready" android:textColor="@color/text" android:padding="8dp"/>
+            <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/panel">
+                <TextView android:id="@+id/buildLog" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ready to build" android:textColor="@color/text" android:fontFamily="monospace" android:padding="12dp" android:textIsSelectable="true"/>
+            </ScrollView>
+            <Button android:id="@+id/runBuildBtn" android:layout_width="match_parent" android:layout_height="50dp" android:text="Build APK" android:textAllCaps="false"/>
+            <Button android:id="@+id/installBuildBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Install Latest APK" android:textAllCaps="false"/>
+        </LinearLayout>
+        <ScrollView android:id="@+id/toolsPane" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="PROJECT TOOLS" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
+                <Button android:id="@+id/exportBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Export / Backup ZIP" android:textAllCaps="false"/>
+                <Button android:id="@+id/terminalBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Terminal" android:textAllCaps="false"/>
+                <Button android:id="@+id/gitBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Git Status" android:textAllCaps="false"/>
+                <Button android:id="@+id/installBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Install Latest APK" android:textAllCaps="false"/>
+                <Button android:id="@+id/diagnosticsBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Toolchain Diagnostics" android:textAllCaps="false"/>
+                <Button android:id="@+id/toolchainBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Import Toolchain ZIP" android:textAllCaps="false"/>
+                <Button android:id="@+id/backupBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Backup Project" android:textAllCaps="false"/>
+                <Button android:id="@+id/projectSettingsBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Project Settings" android:textAllCaps="false"/>
+            </LinearLayout>
+        </ScrollView>
+        <ScrollView android:id="@+id/settingsPane" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="EDITOR" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Theme   Dark (Default)\nFont size   14 sp\nWord wrap   Enabled\nAuto-complete   Enabled" android:textColor="@color/text" android:padding="12dp" android:background="@drawable/panel"/>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BUILD" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Gradle   8.8\nJDK   Embedded (17)\nAndroid SDK   35" android:textColor="@color/text" android:padding="12dp" android:background="@drawable/panel"/>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="APP" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="DevxyzIDE • Code · Build · Create" android:textColor="@color/text" android:padding="12dp" android:background="@drawable/panel"/>
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="62dp" android:gravity="center" android:orientation="horizontal" android:background="@color/panel">
+        <Button android:id="@+id/filesBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Files" android:textAllCaps="false"/>
+        <Button android:id="@+id/codeBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Code" android:textAllCaps="false"/>
+        <Button android:id="@+id/buildBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Build" android:textAllCaps="false"/>
+        <Button android:id="@+id/toolsBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Tools" android:textAllCaps="false"/>
+        <Button android:id="@+id/settingsBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Settings" android:textAllCaps="false"/>
+    </LinearLayout>
 </LinearLayout>

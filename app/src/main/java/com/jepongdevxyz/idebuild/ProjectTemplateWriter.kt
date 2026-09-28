@@ -91,47 +91,8 @@ zipStorePath=wrapper/dists
             File(staging, "gradlew").writeText(
                 """#!/system/bin/sh
 set -eu
-BASE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec java -classpath "${'$'}BASE_DIR/gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "${'$'}@"
-"""
-            )
-            File(staging, "gradlew").setExecutable(true, false)
-            require(staging.renameTo(destination)) { "Cannot activate new project" }
-            return destination
-        } catch (failure: Throwable) {
-            staging.deleteRecursively()
-            throw failure
-        } finally {
-            wrapperJar.close()
-        }
-    }
-} }BASE_DIR/gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "$@"
-"""
-            )
-            File(staging, "gradlew").setExecutable(true, false)
-            require(staging.renameTo(destination)) { "Cannot activate new project" }
-            return destination
-        } catch (failure: Throwable) {
-            staging.deleteRecursively()
-            throw failure
-        } finally {
-            wrapperJar.close()
-        }
-    }
-} }@"
-"""
-            )
-            File(staging, "gradlew").setExecutable(true, false)
-            require(staging.renameTo(destination)) { "Cannot activate new project" }
-            return destination
-        } catch (failure: Throwable) {
-            staging.deleteRecursively()
-            throw failure
-        } finally {
-            wrapperJar.close()
-        }
-    }
-} }BASE_DIR/gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "$@"
+cd "$(dirname "$0")"
+exec java -classpath "gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "$@"
 """
             )
             File(staging, "gradlew").setExecutable(true, false)

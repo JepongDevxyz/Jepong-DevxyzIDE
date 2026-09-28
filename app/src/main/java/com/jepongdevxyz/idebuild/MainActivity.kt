@@ -10,6 +10,7 @@ import android.widget.EditText
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import android.view.View
 import android.text.Editable
 import android.text.TextWatcher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -52,7 +53,8 @@ class MainActivity:AppCompatActivity(){
   }.start()
  }
  private fun selectRoot(r:File){projectRoot=r;prefs.edit().putString("root",r.path).apply();refreshExplorer()}
- private fun refreshExplorer(){val r=projectRoot?:run{b.projectName.text="No project open";b.fileList.adapter=ArrayAdapter(this,android.R.layout.simple_list_item_1,emptyList<String>());return};b.projectName.text=r.name;visibleFiles=r.walkTopDown().filter{it.isFile}.sortedBy{it.relativeTo(r).path}.toList();b.fileList.adapter=ArrayAdapter(this,android.R.layout.simple_list_item_1,visibleFiles.map{it.relativeTo(r).path})}
+ private fun fileAdapter(paths:List<String>)=object:ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,paths){override fun getView(position:Int,convertView:View?,parent:android.view.ViewGroup):View{val row=super.getView(position,convertView,parent) as TextView;row.setTextColor(getColor(com.jepongdevxyz.idebuild.R.color.text));row.setPadding(12,12,8,12);return row}}
+ private fun refreshExplorer(){val r=projectRoot?:run{b.projectName.text="No project open";b.fileList.adapter=fileAdapter(emptyList());return};b.projectName.text=r.name;visibleFiles=r.walkTopDown().filter{it.isFile}.sortedBy{it.relativeTo(r).path}.toList();b.fileList.adapter=fileAdapter(visibleFiles.map{it.relativeTo(r).path})}
  private fun requestOpenFile(f:File){if(!dirty)return openFile(f);AlertDialog.Builder(this).setTitle("Unsaved changes").setMessage("Save changes to "+(currentFile?.name?:"current file")+" before opening "+f.name+"?").setPositiveButton("Save"){_,_->saveCurrent();openFile(f)}.setNegativeButton("Discard"){_,_->dirty=false;openFile(f)}.setNeutralButton("Cancel",null).show()}
  private fun openFile(f:File){if(f.length()>2_000_000)return toast("File too large");showScreen("code");loadingEditor=true;currentFile=f;b.editor.setText(runCatching{f.readText()}.getOrElse{"Cannot open as text"});dirty=false;loadingEditor=false;updateTabTitle()}
  private fun updateTabTitle(){b.tabTitle.text=(currentFile?.name?:"Welcome")+(if(dirty)" •" else "")}

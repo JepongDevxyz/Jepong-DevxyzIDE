@@ -56,7 +56,15 @@ internal object ProjectArchiveImporter {
         fun hasSettings(dir: File) =
             File(dir, "settings.gradle").isFile || File(dir, "settings.gradle.kts").isFile
         if (hasSettings(root)) return root
-        return root.walkTopDown().maxDepth(MAX_ROOT_SEARCH_DEPTH)
-            .firstOrNull { it.isDirectory && it != root && hasSettings(it) }
+        val candidates = root.walkTopDown().maxDepth(MAX_ROOT_SEARCH_DEPTH)
+            .filter { it.isDirectory && it != root && hasSettings(it) }
+            .toList()
+        if (candidates.isEmpty()) return null
+        val nearestDepth = candidates.minOf { it.relativeTo(root).path.count { ch -> ch == File.separatorChar } + 1 }
+        val nearest = candidates.filter {
+            it.relativeTo(root).path.count { ch -> ch == File.separatorChar } + 1 == nearestDepth
+        }
+        require(nearest.size == 1) { "ZIP contains multiple Gradle projects at the same directory level" }
+        return nearest.single()
     }
 }

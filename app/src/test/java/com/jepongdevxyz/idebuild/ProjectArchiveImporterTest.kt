@@ -27,6 +27,19 @@ class ProjectArchiveImporterTest {
         staging.deleteRecursively()
     }
 
+    @Test fun rejectsAmbiguousProjectRoots() {
+        val staging = tempDirectory()
+        assertThrows(IllegalArgumentException::class.java) {
+            ProjectArchiveImporter.extract(zip(
+                "one/settings.gradle" to "rootProject.name='one'",
+                "one/build.gradle" to "plugins {}",
+                "two/settings.gradle" to "rootProject.name='two'",
+                "two/build.gradle" to "plugins {}"
+            ), staging)
+        }
+        staging.deleteRecursively()
+    }
+
     @Test fun findsNestedValidGradleProject() {
         val staging = tempDirectory()
         val root = ProjectArchiveImporter.extract(zip(

@@ -28,7 +28,9 @@ class ProjectTemplateWriterTest {
             if (!completed) process.destroyForcibly().waitFor()
             val output = File(project, "template-build.log").takeIf { it.isFile }?.readText().orEmpty()
             assertTrue("Generated starter project build timed out:\n$output", completed)
-            assertEquals("Generated starter project did not build:\n$output", 0, process.waitFor())
+            val exitCode = process.waitFor()
+            if (exitCode != 0) System.err.println("Generated starter Gradle output:\n$output")
+            assertEquals("Generated starter project did not build:\n$output", 0, exitCode)
 
             val apk = File(project, "app/build/outputs/apk/debug/app-debug.apk")
             assertTrue("Generated debug APK is missing", apk.isFile && apk.length() > 0)
@@ -74,7 +76,7 @@ class ProjectTemplateWriterTest {
     }
 
     private fun findRepositoryRoot(): File {
-        var directory: File? = File(System.getProperty("user.dir")).canonicalFile
+        var directory: File? = File(System.getProperty("user.dir") ?: ".").canonicalFile
         while (directory != null && !File(directory, "app/src/main/assets/gradle-wrapper.jar").isFile) {
             directory = directory.parentFile
         }

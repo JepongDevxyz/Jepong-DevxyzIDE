@@ -55,14 +55,16 @@ wait(2)
 
 # New Project sits at the right of the Files pane's bottom action row.
 tap(0.89, 0.88, "new project button")
+capture("debug-new-project-dialog")
 tap(0.50, 0.48, "project name field")
 adb("shell", "input", "text", "ReferenceApp")
+capture("debug-project-name")
 adb("shell", "input", "keyevent", "4")  # Hide the keyboard before choosing Create.
 tap(0.83, 0.59, "create project confirmation")
 wait(1.2)
+capture("files")
 created = adb("shell", "run-as", PACKAGE, "ls", "files/workspace/ReferenceApp/settings.gradle.kts")
 assert "settings.gradle.kts" in created, f"New Project did not create the Gradle root: {created}"
-capture("files")
 
 # The starter tree expands through java; expand package directories to reach its source file.
 for row, label in ((4, "com package"), (5, "example package"), (6, "referenceapp package")):
@@ -85,7 +87,10 @@ wait(1)
 assert "package:" in adb("shell", "pm", "path", "com.example.generatedsmokeapp"), "Generated project did not install"
 adb("shell", "am", "force-stop", "com.example.generatedsmokeapp")
 
-expected = {"files.png", "code.png", "build.png", "tools.png", "settings.png"}
+expected = {
+    "debug-new-project-dialog.png", "debug-project-name.png",
+    "files.png", "code.png", "build.png", "tools.png", "settings.png"
+}
 actual = {path.name for path in OUT.glob("*.png")}
 assert actual == expected, f"Screenshot set mismatch: expected {expected}, got {actual}"
 for path in sorted(OUT.glob("*.png")):

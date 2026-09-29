@@ -84,6 +84,16 @@ for screen in ("build", "tools", "settings"):
     assert_header({"build": "Build", "tools": "Tools", "settings": "Settings"}[screen])
     capture(screen)
 
+# The unit test assembles and signature-checks a project from New Project's writer.
+# Install and launch that APK on this emulator to verify it is genuinely installable.
+generated_apk = Path("app/build/template-smoke/generated-app.apk")
+assert generated_apk.is_file(), f"Generated project APK is missing: {generated_apk}"
+adb("install", "-r", str(generated_apk))
+adb("shell", "monkey", "-p", "com.example.generatedsmokeapp", "1")
+wait(1)
+assert "package:" in adb("shell", "pm", "path", "com.example.generatedsmokeapp"), "Generated project did not install"
+adb("shell", "am", "force-stop", "com.example.generatedsmokeapp")
+
 expected = {"files.png", "code.png", "build.png", "tools.png", "settings.png"}
 actual = {path.name for path in OUT.glob("*.png")}
 assert actual == expected, f"Screenshot set mismatch: expected {expected}, got {actual}"

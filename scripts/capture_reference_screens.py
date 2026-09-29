@@ -86,13 +86,15 @@ def run() -> None:
             raise RuntimeError("Android emulator did not finish booting")
         wait(2)
 
-    # boot_completed alone is too early on a fresh AVD: Android still runs the
-    # provisioning wizard and the launcher/System UI can ANR while the app starts.
-    adb("shell", "sh", "-c",
-        "until [ \"$(settings get global device_provisioned)\" = 1 ] && "
-        "[ \"$(settings get secure user_setup_complete)\" = 1 ]; do sleep 2; done",
-        timeout=360)
-    wait(8)  # Let the newly provisioned launcher finish its initial workspace load.
+    # The runner reports boot_completed before FallbackHome and SystemUI have
+    # finished first-run setup. Mark this disposable CI AVD provisioned so the
+    # Settings placeholder does not stall or cover the app with a system ANR.
+    adb("shell", "settings", "put", "global", "device_provisioned", "1")
+    adb("shell", "settings", "put", "secure", "user_setup_complete", "1")
+    adb("shell", "am", "force-stop", "com.android.settings")
+    adb("shell", "am", "start", "-W", "-a", "android.intent.action.MAIN",
+        "-c", "android.intent.category.HOME", timeout=90)
+    wait(5)
 
     adb("shell", "input", "keyevent", "82")
     adb("install", "-r", "app/build/outputs/apk/debug/app-debug.apk", timeout=180)

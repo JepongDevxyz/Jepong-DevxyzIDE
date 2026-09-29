@@ -19,8 +19,12 @@ def wait(seconds: float = 0.6) -> None:
 
 
 def elements():
-    adb("shell", "uiautomator", "dump", "/data/local/tmp/devxyzide-window.xml")
-    xml = adb("shell", "cat", "/data/local/tmp/devxyzide-window.xml")
+    dump_result = adb("shell", "uiautomator", "dump", "/data/local/tmp/devxyzide-window.xml")
+    try:
+        xml = adb("shell", "cat", "/data/local/tmp/devxyzide-window.xml")
+    except subprocess.CalledProcessError as error:
+        listing = adb("shell", "ls", "-la", "/data/local/tmp")
+        raise RuntimeError(f"Could not read UI hierarchy. dump output: {dump_result}\n{listing}\n{error.output}") from error
     return ET.fromstring(xml).iter("node")
 
 

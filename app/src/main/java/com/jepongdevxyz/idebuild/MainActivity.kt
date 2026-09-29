@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 5928)
-Total output lines: 237
-
 package com.jepongdevxyz.idebuild
 import android.app.AlertDialog
 import android.content.Intent
@@ -143,7 +140,46 @@ class MainActivity:AppCompatActivity(){
    val icon=TextView(this@MainActivity).apply{text=when{file.isDirectory->"📁";file.extension.equals("xml",true)->"▧";file.name.startsWith("build.gradle")->"◧";else->"▣"};setTextColor(if(file.isDirectory)Color.rgb(255,200,87) else if(file.extension.equals("xml",true))Color.rgb(255,128,107) else getColor(com.jepongdevxyz.idebuild.R.color.cyan));textSize=14f;gravity=android.view.Gravity.CENTER}
    row.addView(icon,LinearLayout.LayoutParams(24.dp(),ViewGroup.LayoutParams.MATCH_PARENT))
    val label=TextView(this@MainActivity).apply{text=file.name;setTextColor(getColor(com.jepongdevxyz.idebuild.R.color.text));textSize=13f;gravity=android.view.Gravity.CENTER_VERTICAL;setSingleLine(true);ellipsize=android.text.TextUtils.TruncateAt.MIDDLE}
-   row.addView(label,LinearLayout.LayoutParams(0,ViewGrou…928 tokens truncated…undColorSpan(getColor(com.jepongdevxyz.idebuild.R.color.blue)),it.range.first,it.range.last+1,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)}
+   row.addView(label,LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f))
+   return row
+  }
+ }
+ private fun Int.dp()=(this*resources.displayMetrics.density).toInt()
+ private fun refreshExplorer(){
+  val root=projectRoot?:run{b.projectName.text="No project open";visibleFiles=emptyList();treeRows=emptyList();b.fileList.adapter=fileAdapter(emptyList());return}
+  b.projectName.text=root.name
+  visibleFiles=root.walkTopDown().filter{it.isFile&&it.name !in setOf(".DS_Store")}.sortedBy{it.relativeTo(root).path}.toList()
+  if(expandedRoot!=root.canonicalPath){
+   expandedRoot=root.canonicalPath;expandedDirectories.clear()
+   fun expandShallow(directory:File,depth:Int){if(depth>=5)return;expandedDirectories.add(directory.canonicalPath);directory.listFiles()?.filter{it.isDirectory&&it.name !in setOf(".git",".gradle","build",".idea",".kotlin")}?.forEach{expandShallow(it,depth+1)}}
+   expandShallow(root,0)
+  }
+  val rows=mutableListOf<Pair<File,Int>>()
+  fun visit(directory:File,depth:Int){
+   val children=directory.listFiles()?.sortedWith(compareBy<File>{!it.isDirectory}.thenBy{it.name.lowercase()}).orEmpty()
+   children.forEach{child->
+    if(child.name !in setOf(".DS_Store")&&!child.name.startsWith(".import-")&&!child.name.startsWith(".new-")){
+     rows+=child to depth
+     if(child.isDirectory&&child.canonicalPath in expandedDirectories&&depth<10&&child.name !in setOf(".git",".gradle","build",".idea",".kotlin"))visit(child,depth+1)
+    }
+   }
+  }
+  visit(root,0)
+  treeRows=rows
+  b.fileList.adapter=fileAdapter(rows)
+ }
+ private fun requestOpenFile(f:File){if(!dirty)return openFile(f);AlertDialog.Builder(this).setTitle("Unsaved changes").setMessage("Save changes to "+(currentFile?.name?:"current file")+" before opening "+f.name+"?").setPositiveButton("Save"){_,_->saveCurrent();openFile(f)}.setNegativeButton("Discard"){_,_->dirty=false;openFile(f)}.setNeutralButton("Cancel",null).show()}
+ private fun openFile(f:File){if(f.length()>2_000_000)return toast("File too large");showScreen("code");loadingEditor=true;currentFile=f;b.editor.setText(runCatching{f.readText()}.getOrElse{"Cannot open as text"});dirty=false;loadingEditor=false;updateTabTitle();updateLineNumbers();applySyntaxHighlighting()}
+ private fun openFileWithExtension(vararg extensions:String){projectRoot?:return toast("Open a project first");val matches=visibleFiles.filter{it.isFile&&extensions.any{extension->it.extension.equals(extension,true)}};val file=if(extensions.contains("xml"))matches.firstOrNull{it.invariantSeparatorsPath.contains("/res/layout/")}?:matches.firstOrNull() else matches.firstOrNull{it.name=="MainActivity.kt"||it.name=="MainActivity.java"}?:matches.firstOrNull();if(file==null)toast("No "+extensions.joinToString("/")+" file found")else requestOpenFile(file)}
+ private fun updateLineNumbers(){val count=(b.editor.text?.toString()?.count{it=='\n'}?:0)+1;b.lineNumbers.text=(1..count).joinToString("\n")}
+ private fun updateFontSize(size:Int){val actual=size.coerceIn(8,28);b.fontSizeValue.text=actual.toString();b.editor.textSize=actual.toFloat();prefs.edit().putInt("font_size",actual).apply()}
+ private fun applySyntaxHighlighting(){
+  val editable=b.editor.text?:return
+  val source=editable.toString()
+  editable.getSpans(0,editable.length,ForegroundColorSpan::class.java).forEach{editable.removeSpan(it)}
+  val pattern=Regex("""\b(package|import|class|interface|public|private|protected|fun|val|var|override|return|new|void|extends|implements|if|else|when|this)\b""")
+  pattern.findAll(source).forEach{editable.setSpan(ForegroundColorSpan(getColor(com.jepongdevxyz.idebuild.R.color.cyan)),it.range.first,it.range.last+1,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)}
+  Regex("""\b[0-9]+\b""").findAll(source).forEach{editable.setSpan(ForegroundColorSpan(getColor(com.jepongdevxyz.idebuild.R.color.blue)),it.range.first,it.range.last+1,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)}
  }
  private fun updateTabTitle(){b.tabTitle.text=(currentFile?.name?:"Welcome")+(if(dirty)" •" else "")}
  private fun saveCurrent(){val f=currentFile?:return toast("No file open");runCatching{f.writeText(b.editor.text.toString())}.onSuccess{dirty=false;updateTabTitle();toast("Saved "+f.name)}.onFailure{toast("Save failed: "+it.message)}}

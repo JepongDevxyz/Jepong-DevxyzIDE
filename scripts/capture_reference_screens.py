@@ -60,6 +60,8 @@ adb("shell", "input", "text", "ReferenceApp")
 adb("shell", "input", "keyevent", "4")  # Hide the keyboard before choosing Create.
 tap(0.83, 0.59, "create project confirmation")
 wait(1.2)
+created = adb("shell", "run-as", PACKAGE, "ls", "files/workspace/ReferenceApp/settings.gradle.kts")
+assert "settings.gradle.kts" in created, f"New Project did not create the Gradle root: {created}"
 capture("files")
 
 # The starter tree expands through java; expand package directories to reach its source file.

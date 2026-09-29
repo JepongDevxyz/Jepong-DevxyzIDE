@@ -68,6 +68,7 @@ wait(1.2)
 capture("files")
 
 # Open the real generated Kotlin source so the editor screen shows a project file.
+tap(lambda a: "referenceapp" in a.get("text", "").lower() and a.get("clickable") == "true", "starter package directory")
 tap(lambda a: "MainActivity.kt" in a.get("text", "") and a.get("clickable") == "true", "MainActivity.kt project row")
 capture("code")
 for screen in ("build", "tools", "settings"):

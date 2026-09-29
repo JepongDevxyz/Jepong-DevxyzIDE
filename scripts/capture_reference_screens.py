@@ -56,6 +56,12 @@ def capture(name: str) -> None:
     subprocess.run(["adb", "pull", f"/sdcard/{name}.png", str(OUT / f"{name}.png")], check=True)
 
 
+def assert_header(expected: str) -> None:
+    nodes = list(elements())
+    title = next((node.attrib.get("text") for node in nodes if node.attrib.get("resource-id", "").endswith(":id/brandTitle")), None)
+    assert title == expected, f"Expected screen title {expected!r}, got {title!r}"
+
+
 adb("install", "-r", "app/build/outputs/apk/debug/app-debug.apk")
 adb("shell", "pm", "clear", PACKAGE)
 adb("shell", "monkey", "-p", PACKAGE, "1")
@@ -65,14 +71,17 @@ tap(lambda a: a.get("class", "") == "android.widget.EditText", "project name fie
 adb("shell", "input", "text", "ReferenceApp")
 tap(by_text("Create"), "create project confirmation")
 wait(1.2)
+assert_header("DevxyzIDE")
 capture("files")
 
 # Open the real generated Kotlin source so the editor screen shows a project file.
-tap(lambda a: "referenceapp" in a.get("text", "").lower() and a.get("clickable") == "true", "starter package directory")
-tap(lambda a: "MainActivity.kt" in a.get("text", "") and a.get("clickable") == "true", "MainActivity.kt project row")
+tap(lambda a: "referenceapp" in a.get("text", "").lower(), "starter package directory")
+tap(lambda a: "MainActivity.kt" in a.get("text", ""), "MainActivity.kt project row")
+assert_header("MainActivity.kt")
 capture("code")
 for screen in ("build", "tools", "settings"):
     tap(by_id(f"{screen}Btn"), f"{screen} navigation button")
+    assert_header({"build": "Build", "tools": "Tools", "settings": "Settings"}[screen])
     capture(screen)
 
 expected = {"files.png", "code.png", "build.png", "tools.png", "settings.png"}

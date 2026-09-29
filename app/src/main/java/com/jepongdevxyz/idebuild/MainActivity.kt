@@ -5,12 +5,15 @@ import android.net.Uri
 import android.os.Bundle
 import android.graphics.Typeface
 import android.provider.Settings
-import android.widget.ArrayAdapter
+import android.widget.BaseAdapter
+import android.widget.LinearLayout
 import android.widget.EditText
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import android.view.View
+import android.view.ViewGroup
+import android.graphics.Color
 import android.text.Spannable
 import android.text.style.ForegroundColorSpan
 import android.widget.AdapterView
@@ -55,6 +58,7 @@ class MainActivity:AppCompatActivity(){
   b.toolsBtn.setOnClickListener{showScreen("tools")}
   b.searchBtn.setOnClickListener{showSearch()}
   b.filesBtn.setOnClickListener{showScreen("files")}
+  b.backBtn.setOnClickListener{showScreen("files")}
   b.codeBtn.setOnClickListener{showScreen("code")}
   b.settingsBtn.setOnClickListener{showScreen("settings")}
   b.newProjectBtn.setOnClickListener{newProject()}
@@ -122,7 +126,25 @@ class MainActivity:AppCompatActivity(){
   }.start()
  }
  private fun selectRoot(r:File){projectRoot=r;prefs.edit().putString("root",r.path).apply();refreshExplorer()}
- private fun fileAdapter(paths:List<String>)=object:ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,paths){override fun getView(position:Int,convertView:View?,parent:android.view.ViewGroup):View{val row=super.getView(position,convertView,parent) as TextView;row.setTextColor(getColor(com.jepongdevxyz.idebuild.R.color.text));row.setTextSize(13f);row.setPadding(12,9,8,9);row.setSingleLine(true);return row}}
+ private fun fileAdapter(items:List<Pair<File,Int>>)=object:BaseAdapter(){
+  override fun getCount()=items.size
+  override fun getItem(position:Int)=items[position]
+  override fun getItemId(position:Int)=position.toLong()
+  override fun getView(position:Int,convertView:View?,parent:ViewGroup):View{
+   val (file,depth)=items[position]
+   val row=(convertView as? LinearLayout)?:LinearLayout(this@MainActivity).apply{orientation=LinearLayout.HORIZONTAL;gravity=android.view.Gravity.CENTER_VERTICAL;minimumHeight=38.dp();isFocusable=false;isClickable=false}
+   row.removeAllViews();row.setPadding((8+depth*15).dp(),0,8.dp(),0);row.layoutParams=android.widget.AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,38.dp())
+   row.setBackgroundResource(if(currentFile?.canonicalPath==file.canonicalPath)com.jepongdevxyz.idebuild.R.drawable.tree_row_selected else android.R.color.transparent)
+   val arrow=TextView(this@MainActivity).apply{text=if(file.isDirectory){if(file.canonicalPath in expandedDirectories)"⌄" else "›"}else "";setTextColor(getColor(com.jepongdevxyz.idebuild.R.color.muted));textSize=18f;gravity=android.view.Gravity.CENTER}
+   row.addView(arrow,LinearLayout.LayoutParams(18.dp(),ViewGroup.LayoutParams.MATCH_PARENT))
+   val icon=TextView(this@MainActivity).apply{text=when{file.isDirectory->"📁";file.extension.equals("xml",true)->"▧";file.name.startsWith("build.gradle")->"◧";else->"▣"};setTextColor(if(file.isDirectory)Color.rgb(255,200,87) else if(file.extension.equals("xml",true))Color.rgb(255,128,107) else getColor(com.jepongdevxyz.idebuild.R.color.cyan));textSize=14f;gravity=android.view.Gravity.CENTER}
+   row.addView(icon,LinearLayout.LayoutParams(24.dp(),ViewGroup.LayoutParams.MATCH_PARENT))
+   val label=TextView(this@MainActivity).apply{text=file.name;setTextColor(getColor(com.jepongdevxyz.idebuild.R.color.text));textSize=13f;gravity=android.view.Gravity.CENTER_VERTICAL;setSingleLine(true);ellipsize=android.text.TextUtils.TruncateAt.MIDDLE}
+   row.addView(label,LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f))
+   return row
+  }
+ }
+ private fun Int.dp()=(this*resources.displayMetrics.density).toInt()
  private fun refreshExplorer(){
   val root=projectRoot?:run{b.projectName.text="No project open";visibleFiles=emptyList();treeRows=emptyList();b.fileList.adapter=fileAdapter(emptyList());return}
   b.projectName.text=root.name
@@ -144,10 +166,7 @@ class MainActivity:AppCompatActivity(){
   }
   visit(root,0)
   treeRows=rows
-  b.fileList.adapter=fileAdapter(rows.map{(file,depth)->
-   val arrow=if(file.isDirectory){if(file.canonicalPath in expandedDirectories)"▾ " else "▸ "}else if(file.extension.equals("xml",true))"▧ " else "▣ "
-   "  ".repeat(depth.coerceAtMost(7))+arrow+file.name
-  })
+  b.fileList.adapter=fileAdapter(rows)
  }
  private fun requestOpenFile(f:File){if(!dirty)return openFile(f);AlertDialog.Builder(this).setTitle("Unsaved changes").setMessage("Save changes to "+(currentFile?.name?:"current file")+" before opening "+f.name+"?").setPositiveButton("Save"){_,_->saveCurrent();openFile(f)}.setNegativeButton("Discard"){_,_->dirty=false;openFile(f)}.setNeutralButton("Cancel",null).show()}
  private fun openFile(f:File){if(f.length()>2_000_000)return toast("File too large");showScreen("code");loadingEditor=true;currentFile=f;b.editor.setText(runCatching{f.readText()}.getOrElse{"Cannot open as text"});dirty=false;loadingEditor=false;updateTabTitle();updateLineNumbers();applySyntaxHighlighting()}
@@ -183,7 +202,14 @@ class MainActivity:AppCompatActivity(){
   b.buildPane.visibility=if(screen=="build")View.VISIBLE else View.GONE
   b.toolsPane.visibility=if(screen=="tools")View.VISIBLE else View.GONE
   b.settingsPane.visibility=if(screen=="settings")View.VISIBLE else View.GONE
-  b.screenTitle.text=when(screen){"files"->projectRoot?.name?: "Projects";"code"->"Code Editor";"build"->"Build";"tools"->"Tools";else->"Settings"}
+  b.brandTitle.text=when(screen){"files"->"DevxyzIDE";"code"->currentFile?.name?:"Code Editor";"build"->"Build";"tools"->"Tools";else->"Settings"}
+  b.brandTitle.textSize=if(screen=="code")14f else 18f
+  b.screenTitle.visibility=View.GONE
+  b.brandIcon.visibility=View.GONE
+  b.backBtn.visibility=if(screen=="code")View.VISIBLE else View.GONE
+  val showActions=screen=="files"||screen=="code"
+  b.searchBtn.visibility=if(showActions)View.VISIBLE else View.GONE
+  b.importBtn.visibility=if(showActions)View.VISIBLE else View.GONE
   val active=getColor(com.jepongdevxyz.idebuild.R.color.cyan)
   val idle=getColor(com.jepongdevxyz.idebuild.R.color.muted)
   b.filesBtn.setTextColor(if(screen=="files")active else idle)
@@ -192,7 +218,7 @@ class MainActivity:AppCompatActivity(){
   b.toolsBtn.setTextColor(if(screen=="tools")active else idle)
   b.settingsBtn.setTextColor(if(screen=="settings")active else idle)
   if(screen=="files")refreshExplorer()
-  if(screen=="build")b.buildLog.text=currentBuildLog.ifBlank{"› Task :app:compileDebugJavaWithJavac\n› Task :app:mergeDebugResources\n› Task :app:packageDebug\n› Task :app:assembleDebug"}
+  if(screen=="build")b.buildLog.text=currentBuildLog.ifBlank{"No build run yet.\n\nTap Build APK to run Gradle tasks. Build output will appear here."}
  }
  private fun showLog(title:String,text:String){currentBuildLog=text;b.buildLog.text=text.ifBlank{"(no output)"};val tv=TextView(this).apply{setText(text.ifBlank{"(no output)"});setTextIsSelectable(true);setPadding(28,20,28,20);typeface=Typeface.MONOSPACE};AlertDialog.Builder(this).setTitle(title).setView(ScrollView(this).apply{addView(tv)}).setPositiveButton("OK",null).show()}
  private fun showTools(){showScreen("tools")}

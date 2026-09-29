@@ -19,8 +19,8 @@ def wait(seconds: float = 0.6) -> None:
 
 
 def elements():
-    adb("shell", "uiautomator", "dump", "/sdcard/window.xml")
-    xml = adb("shell", "cat", "/sdcard/window.xml")
+    adb("shell", "uiautomator", "dump", "/data/local/tmp/devxyzide-window.xml")
+    xml = adb("shell", "cat", "/data/local/tmp/devxyzide-window.xml")
     return ET.fromstring(xml).iter("node")
 
 

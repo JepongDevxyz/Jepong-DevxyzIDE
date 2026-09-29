@@ -38,9 +38,13 @@ def tap(x: float, y: float, label: str) -> None:
 
 def capture(name: str) -> None:
     wait(0.6)
-    remote = f"/sdcard/{name}.png"
-    adb("shell", "screencap", "-p", remote)
-    subprocess.run(["adb", "pull", remote, str(OUT / f"{name}.png")], check=True, timeout=90)
+    destination = OUT / f"{name}.png"
+    with destination.open("wb") as screenshot:
+        result = subprocess.run(["adb", "exec-out", "screencap", "-p"], stdout=screenshot, stderr=subprocess.PIPE, timeout=90)
+    if result.returncode:
+        raise RuntimeError(f"Could not capture {name} screen: {result.stderr.decode(errors='replace')}")
+    if destination.stat().st_size < 10_000:
+        raise RuntimeError(f"Captured {name} screenshot is unexpectedly small: {destination.stat().st_size} bytes")
     print(f"Captured {name}", flush=True)
 
 

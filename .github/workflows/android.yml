@@ -38,7 +38,9 @@ jobs:
       - name: Capture real screens on Android emulator
         uses: reactivecircus/android-emulator-runner@v2.38.0
         with:
-          api-level: 35
+          # API 30 exercises the app's minSdk 26+ UI with a much lighter emulator.
+          # APKs are still compiled, linted, and built against compileSdk 35 above.
+          api-level: 30
           arch: x86_64
           profile: pixel_2
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -no-metrics
@@ -49,7 +51,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DevxyzIDE-ui-reference-review
-          path: artifacts/ui-reference/*.png
+          path: artifacts/ui-reference/*
           if-no-files-found: warn
           retention-days: 7
       - name: Publish debug APK artifact after design approval

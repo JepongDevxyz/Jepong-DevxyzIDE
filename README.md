@@ -1,17 +1,19 @@
 # DevxyzIDE
 
-Native Android IDE by Jepong Devxyz, rebuilt cleanly from the supplied visual reference.
+Native Android IDE by Jepong Devxyz.
 
-## Implemented foundation
-- Dark navy/cyan DevxyzIDE workspace UI
-- Project explorer
-- ZIP project import with Zip Slip protection
-- Open/edit/save source files
-- Project text search
-- Build and Tools surfaces
-- Android CI that compiles, tests and uploads a debug APK
+## Reference UI and workspace
+- Splash screen and DevxyzIDE logo treatment
+- Project explorer with a collapsible Android project tree
+- Source and layout editor tabs, syntax-colored code, and line numbers
+- Build log, APK install action, and project folder details
+- Project tools, utilities, resource helpers, and editable settings
+- Dark navy/cyan colors and compact five-section mobile navigation
 
-## Release target
-Full on-device Java/Kotlin/XML IDE with Gradle build, diagnostics, APK install/signing, terminal, Git, templates, backup/export and responsive UI.
+## Project workflows
+- Import Gradle ZIPs in the background with staging, Zip Slip protection, size/depth limits, and Gradle root validation
+- Create a launchable Kotlin Android project with a Gradle 8.10.2 wrapper
+- Edit and save source, search project files, export/backup project ZIPs, and inspect toolchain status
+- Build and install debug APKs with the embedded JDK/Android SDK toolchain
 
-Package: `com.jepongdevxyz.idebuild`
+Android CI runs lint, unit tests, assembles a debug APK, checks the package and signature. APK artifact publishing is held until the approved reference UI has been explicitly reviewed.

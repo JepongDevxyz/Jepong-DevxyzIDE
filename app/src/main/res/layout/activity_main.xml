@@ -1,64 +1,131 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:background="@color/navy">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:paddingHorizontal="16dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Devxyz" android:textColor="@color/text" android:textStyle="bold" android:textSize="20sp"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="IDE" android:textColor="@color/cyan" android:textStyle="bold" android:textSize="20sp"/>
-        <TextView android:id="@+id/screenTitle" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="end" android:text="Files" android:textColor="@color/muted"/>
-        <Button android:id="@+id/importBtn" android:layout_width="wrap_content" android:layout_height="42dp" android:text="Import ZIP" android:textAllCaps="false"/>
-    </LinearLayout>
-    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-        <LinearLayout android:id="@+id/filesPane" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="PROJECT EXPLORER" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
-            <TextView android:id="@+id/projectName" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="No project open" android:textColor="@color/text" android:padding="8dp"/>
-            <Button android:id="@+id/searchBtn" android:layout_width="match_parent" android:layout_height="44dp" android:text="Search in Project" android:textAllCaps="false"/>
-            <ListView android:id="@+id/fileList" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:dividerHeight="0dp"/>
-            <Button android:id="@+id/newProjectBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="+  New Project" android:textAllCaps="false"/>
-            <Button android:id="@+id/importProjectBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Import Project ZIP" android:textAllCaps="false"/>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/navy">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+        <LinearLayout android:id="@+id/topBar" android:layout_width="match_parent" android:layout_height="58dp" android:gravity="center_vertical" android:paddingHorizontal="14dp" android:background="@color/navy">
+            <ImageView android:layout_width="34dp" android:layout_height="34dp" android:src="@drawable/ic_devxyz" android:contentDescription="DevxyzIDE logo"/>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="9dp">
+                <TextView android:id="@+id/brandTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="DevxyzIDE" android:textColor="@color/text" android:textSize="19sp" android:textStyle="bold"/>
+                <TextView android:id="@+id/screenTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Projects" android:textColor="@color/muted" android:textSize="11sp"/>
+            </LinearLayout>
+            <TextView android:id="@+id/searchBtn" android:layout_width="42dp" android:layout_height="42dp" android:gravity="center" android:text="⌕" android:textColor="@color/text" android:textSize="26sp" android:contentDescription="Search project"/>
+            <TextView android:id="@+id/importBtn" android:layout_width="42dp" android:layout_height="42dp" android:gravity="center" android:text="⋮" android:textColor="@color/text" android:textSize="25sp" android:contentDescription="Project actions"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/editorPane" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/panel" android:visibility="gone">
-            <TextView android:id="@+id/tabTitle" android:layout_width="match_parent" android:layout_height="42dp" android:paddingHorizontal="12dp" android:gravity="center_vertical" android:text="Welcome" android:textColor="@color/cyan" android:textStyle="bold"/>
-            <EditText android:id="@+id/editor" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="top|start" android:padding="12dp" android:fontFamily="monospace" android:textSize="13sp" android:textColor="@color/text" android:textColorHint="@color/muted" android:hint="Open a source file to start coding…" android:background="@android:color/transparent" android:inputType="textMultiLine|textNoSuggestions" android:scrollbars="vertical|horizontal"/>
-            <Button android:id="@+id/saveBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Save File" android:textAllCaps="false"/>
-        </LinearLayout>
-        <LinearLayout android:id="@+id/buildPane" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp" android:visibility="gone">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BUILD &amp; RUN" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
-            <TextView android:id="@+id/buildStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ready" android:textColor="@color/text" android:padding="8dp"/>
-            <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/panel">
-                <TextView android:id="@+id/buildLog" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Ready to build" android:textColor="@color/text" android:fontFamily="monospace" android:padding="12dp" android:textIsSelectable="true"/>
+
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+            <LinearLayout android:id="@+id/filesPane" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingBottom="8dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="44dp" android:gravity="center_vertical">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Projects" android:textColor="@color/text" android:textSize="17sp" android:textStyle="bold"/>
+                    <TextView android:id="@+id/projectMenuBtn" android:layout_width="40dp" android:layout_height="40dp" android:gravity="center" android:text="⋮" android:textColor="@color/muted" android:textSize="22sp"/>
+                </LinearLayout>
+                <TextView android:id="@+id/projectName" android:layout_width="match_parent" android:layout_height="38dp" android:gravity="center_vertical" android:paddingHorizontal="10dp" android:text="No project open" android:textColor="@color/cyan" android:textSize="13sp" android:textStyle="bold" android:background="@drawable/panel"/>
+                <ListView android:id="@+id/fileList" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="@android:color/transparent" android:dividerHeight="2dp" android:paddingTop="8dp" android:clipToPadding="false"/>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="54dp" android:gravity="center_vertical" android:orientation="horizontal">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Project Explorer" android:textColor="@color/muted" android:textSize="12sp"/>
+                    <TextView android:id="@+id/newProjectBtn" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="＋" android:textColor="@color/text" android:textSize="30sp" android:background="@drawable/button_primary"/>
+                </LinearLayout>
+                <Button android:id="@+id/importProjectBtn" android:layout_width="match_parent" android:layout_height="44dp" android:text="Open / Import Project ZIP" android:textAllCaps="false"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/editorPane" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@color/navy" android:visibility="gone">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="44dp" android:gravity="center_vertical" android:paddingHorizontal="10dp" android:background="@color/panel">
+                    <TextView android:id="@+id/tabTitle" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="MainActivity.java" android:textColor="@color/text" android:textSize="13sp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⌕   ⋮" android:textColor="@color/muted" android:textSize="18sp"/>
+                </LinearLayout>
+                <HorizontalScrollView android:layout_width="match_parent" android:layout_height="42dp" android:fillViewport="false" android:scrollbars="none" android:background="@color/panel">
+                    <LinearLayout android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal">
+                        <TextView android:id="@+id/sourceTabBtn" android:layout_width="wrap_content" android:layout_height="match_parent" android:gravity="center" android:paddingHorizontal="14dp" android:text="MainActivity.java" android:textColor="@color/cyan" android:textSize="12sp" android:background="@drawable/chip_selected"/>
+                        <TextView android:id="@+id/layoutTabBtn" android:layout_width="wrap_content" android:layout_height="match_parent" android:gravity="center" android:paddingHorizontal="14dp" android:text="activity_main.xml" android:textColor="@color/muted" android:textSize="12sp"/>
+                    </LinearLayout>
+                </HorizontalScrollView>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@color/editor">
+                    <TextView android:id="@+id/lineNumbers" android:layout_width="42dp" android:layout_height="match_parent" android:gravity="top|end" android:paddingTop="12dp" android:paddingEnd="8dp" android:fontFamily="monospace" android:text="1" android:textColor="@color/muted" android:textSize="12sp" android:background="@color/panel"/>
+                    <EditText android:id="@+id/editor" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="top|start" android:padding="12dp" android:fontFamily="monospace" android:textSize="13sp" android:textColor="@color/text" android:textColorHint="@color/muted" android:hint="Open a source file to start coding…" android:background="@android:color/transparent" android:inputType="textMultiLine|textNoSuggestions" android:scrollbars="vertical|horizontal"/>
+                </LinearLayout>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="52dp" android:gravity="center_vertical" android:paddingHorizontal="10dp" android:background="@color/panel">
+                    <Button android:id="@+id/saveBtn" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:text="Save" android:textAllCaps="false"/>
+                    <TextView android:id="@+id/runCodeBtn" android:layout_width="48dp" android:layout_height="48dp" android:layout_marginStart="10dp" android:gravity="center" android:text="▶" android:textColor="@color/text" android:textSize="20sp" android:background="@drawable/button_primary"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/buildPane" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp" android:visibility="gone">
+                <TextView android:layout_width="match_parent" android:layout_height="36dp" android:text="Build" android:textColor="@color/text" android:textSize="18sp" android:textStyle="bold"/>
+                <TextView android:id="@+id/buildStatus" android:layout_width="match_parent" android:layout_height="42dp" android:gravity="center_vertical" android:text="●  READY TO BUILD" android:textColor="@color/cyan" android:textSize="13sp" android:textStyle="bold" android:paddingHorizontal="10dp"/>
+                <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/panel">
+                    <TextView android:id="@+id/buildLog" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="› Task :app:compileDebugKotlin&#10;› Task :app:mergeDebugResources&#10;› Task :app:packageDebug&#10;› Task :app:assembleDebug" android:textColor="@color/text" android:fontFamily="monospace" android:textSize="12sp" android:padding="14dp" android:textIsSelectable="true"/>
+                </ScrollView>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="10dp">
+                    <Button android:id="@+id/runBuildBtn" android:layout_width="match_parent" android:layout_height="50dp" android:text="Build APK" android:textAllCaps="false" android:background="@drawable/button_primary" android:textColor="@color/text"/>
+                    <Button android:id="@+id/installBuildBtn" android:layout_width="match_parent" android:layout_height="46dp" android:layout_marginTop="6dp" android:text="Install APK" android:textAllCaps="false"/>
+                    <Button android:id="@+id/openFolderBtn" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="4dp" android:text="Open Folder" android:textAllCaps="false"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <ScrollView android:id="@+id/toolsPane" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:visibility="gone">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+                    <TextView android:layout_width="match_parent" android:layout_height="32dp" android:text="Project Tools" android:textColor="@color/text" android:textSize="16sp" android:textStyle="bold"/>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="92dp" android:orientation="horizontal">
+                        <Button android:id="@+id/newProjectBtnTools" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="▣&#10;New Project" android:textAllCaps="false" android:background="@drawable/panel"/>
+                        <Button android:id="@+id/openProjectBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="▰&#10;Open Project" android:textAllCaps="false" android:background="@drawable/panel"/>
+                        <Button android:id="@+id/importToolsBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="⇧&#10;Import ZIP" android:textAllCaps="false" android:background="@drawable/panel"/>
+                        <Button android:id="@+id/projectSettingsBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="⚙&#10;Settings" android:textAllCaps="false" android:background="@drawable/panel"/>
+                    </LinearLayout>
+                    <TextView android:layout_width="match_parent" android:layout_height="34dp" android:gravity="center_vertical" android:text="Utilities" android:textColor="@color/text" android:textStyle="bold"/>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="84dp" android:orientation="horizontal">
+                        <Button android:id="@+id/terminalBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="▤&#10;Terminal" android:textAllCaps="false"/>
+                        <Button android:id="@+id/gitBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="◆&#10;Git" android:textAllCaps="false"/>
+                        <Button android:id="@+id/installBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="⬆&#10;APK Signer" android:textAllCaps="false"/>
+                        <Button android:id="@+id/diagnosticsBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="◎&#10;AAPT / AAB" android:textAllCaps="false"/>
+                    </LinearLayout>
+                    <TextView android:layout_width="match_parent" android:layout_height="34dp" android:gravity="center_vertical" android:text="Extras" android:textColor="@color/text" android:textStyle="bold"/>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="84dp" android:orientation="horizontal">
+                        <Button android:id="@+id/databaseBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="▤&#10;Database" android:textAllCaps="false"/>
+                        <Button android:id="@+id/layoutPreviewBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="▧&#10;Layout Preview" android:textAllCaps="false"/>
+                        <Button android:id="@+id/resourceBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="▣&#10;Resources" android:textAllCaps="false"/>
+                        <Button android:id="@+id/colorPickerBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="◈&#10;Color Picker" android:textAllCaps="false"/>
+                    </LinearLayout>
+                    <Button android:id="@+id/exportBtn" android:layout_width="match_parent" android:layout_height="44dp" android:text="Export / Backup ZIP" android:textAllCaps="false"/>
+                    <Button android:id="@+id/toolchainBtn" android:layout_width="match_parent" android:layout_height="44dp" android:text="Import Embedded Toolchain" android:textAllCaps="false"/>
+                    <Button android:id="@+id/backupBtn" android:layout_width="match_parent" android:layout_height="44dp" android:text="Backup Project" android:textAllCaps="false"/>
+                </LinearLayout>
             </ScrollView>
-            <Button android:id="@+id/runBuildBtn" android:layout_width="match_parent" android:layout_height="50dp" android:text="Build APK" android:textAllCaps="false"/>
-            <Button android:id="@+id/installBuildBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Install Latest APK" android:textAllCaps="false"/>
+
+            <ScrollView android:id="@+id/settingsPane" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:visibility="gone">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="42dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Settings" android:textColor="@color/text" android:textSize="18sp" android:textStyle="bold"/><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="☼   ◉" android:textColor="@color/muted" android:textSize="20sp"/></LinearLayout>
+                    <TextView android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center_vertical" android:text="Editor" android:textColor="@color/cyan" android:textStyle="bold"/>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Font Size" android:textColor="@color/text"/><SeekBar android:id="@+id/fontSizeSeekBar" android:layout_width="130dp" android:layout_height="wrap_content" android:max="24" android:progress="10"/><TextView android:id="@+id/fontSizeValue" android:layout_width="28dp" android:layout_height="wrap_content" android:gravity="end" android:text="14" android:textColor="@color/text"/></LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Theme" android:textColor="@color/text"/><Spinner android:id="@+id/themeSpinner" android:layout_width="150dp" android:layout_height="42dp" android:entries="@array/theme_choices"/></LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Word Wrap" android:textColor="@color/text"/><Switch android:id="@+id/wordWrapSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true"/></LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Auto Complete" android:textColor="@color/text"/><Switch android:id="@+id/autoCompleteSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true"/></LinearLayout>
+                    <TextView android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center_vertical" android:text="Build" android:textColor="@color/cyan" android:textStyle="bold"/>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="46dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Gradle Version" android:textColor="@color/text"/><Spinner android:id="@+id/gradleSpinner" android:layout_width="150dp" android:layout_height="42dp" android:entries="@array/gradle_choices"/></LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="46dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="JDK" android:textColor="@color/text"/><TextView android:layout_width="150dp" android:layout_height="42dp" android:gravity="center_vertical" android:text="Embedded (17)" android:textColor="@color/text"/></LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="46dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Android SDK" android:textColor="@color/text"/><TextView android:layout_width="150dp" android:layout_height="42dp" android:gravity="center_vertical" android:text="Built-in (35)" android:textColor="@color/text"/></LinearLayout>
+                    <TextView android:layout_width="match_parent" android:layout_height="30dp" android:gravity="center_vertical" android:text="App" android:textColor="@color/cyan" android:textStyle="bold"/>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="46dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Language" android:textColor="@color/text"/><Spinner android:layout_width="150dp" android:layout_height="42dp" android:entries="@array/language_choices"/></LinearLayout>
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Backup Projects" android:textColor="@color/text"/><Switch android:id="@+id/backupSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true"/></LinearLayout>
+                </LinearLayout>
+            </ScrollView>
+        </FrameLayout>
+
+        <LinearLayout android:id="@+id/bottomNav" android:layout_width="match_parent" android:layout_height="62dp" android:gravity="center" android:orientation="horizontal" android:background="@color/panel">
+            <TextView android:id="@+id/filesBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="▤&#10;Files" android:textColor="@color/cyan" android:textSize="11sp"/>
+            <TextView android:id="@+id/codeBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="⌘&#10;Code" android:textColor="@color/muted" android:textSize="11sp"/>
+            <TextView android:id="@+id/buildBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="◫&#10;Build" android:textColor="@color/muted" android:textSize="11sp"/>
+            <TextView android:id="@+id/toolsBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="⚒&#10;Tools" android:textColor="@color/muted" android:textSize="11sp"/>
+            <TextView android:id="@+id/settingsBtn" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="⚙&#10;Settings" android:textColor="@color/muted" android:textSize="11sp"/>
         </LinearLayout>
-        <ScrollView android:id="@+id/toolsPane" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="PROJECT TOOLS" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
-                <Button android:id="@+id/exportBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Export / Backup ZIP" android:textAllCaps="false"/>
-                <Button android:id="@+id/terminalBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Terminal" android:textAllCaps="false"/>
-                <Button android:id="@+id/gitBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Git Status" android:textAllCaps="false"/>
-                <Button android:id="@+id/installBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Install Latest APK" android:textAllCaps="false"/>
-                <Button android:id="@+id/diagnosticsBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Toolchain Diagnostics" android:textAllCaps="false"/>
-                <Button android:id="@+id/toolchainBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Import Toolchain ZIP" android:textAllCaps="false"/>
-                <Button android:id="@+id/backupBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Backup Project" android:textAllCaps="false"/>
-                <Button android:id="@+id/projectSettingsBtn" android:layout_width="match_parent" android:layout_height="48dp" android:text="Project Settings" android:textAllCaps="false"/>
-            </LinearLayout>
-        </ScrollView>
-        <ScrollView android:id="@+id/settingsPane" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="EDITOR" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Theme   Dark (Default)\nFont size   14 sp\nWord wrap   Enabled\nAuto-complete   Enabled" android:textColor="@color/text" android:padding="12dp" android:background="@drawable/panel"/>
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BUILD" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Gradle   8.8\nJDK   Embedded (17)\nAndroid SDK   35" android:textColor="@color/text" android:padding="12dp" android:background="@drawable/panel"/>
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="APP" android:textColor="@color/cyan" android:textStyle="bold" android:padding="8dp"/>
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="DevxyzIDE • Code · Build · Create" android:textColor="@color/text" android:padding="12dp" android:background="@drawable/panel"/>
-            </LinearLayout>
-        </ScrollView>
-    </FrameLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="62dp" android:gravity="center" android:orientation="horizontal" android:background="@color/panel">
-        <Button android:id="@+id/filesBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Files" android:textAllCaps="false"/>
-        <Button android:id="@+id/codeBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Code" android:textAllCaps="false"/>
-        <Button android:id="@+id/buildBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Build" android:textAllCaps="false"/>
-        <Button android:id="@+id/toolsBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Tools" android:textAllCaps="false"/>
-        <Button android:id="@+id/settingsBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Settings" android:textAllCaps="false"/>
     </LinearLayout>
-</LinearLayout>
+    <FrameLayout android:id="@+id/splashPane" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/splash_background" android:clickable="true" android:focusable="true" android:visibility="gone">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical" android:padding="26dp">
+            <ImageView android:layout_width="206dp" android:layout_height="206dp" android:layout_marginBottom="24dp" android:src="@drawable/ic_devxyz" android:contentDescription="DevxyzIDE"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="DevxyzIDE" android:textColor="@color/text" android:textSize="34sp" android:textStyle="bold"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="CODE  •  BUILD  •  CREATE" android:textColor="@color/cyan" android:textSize="12sp" android:letterSpacing="0.22"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="A Powerful Android IDE on Mobile" android:textColor="@color/text" android:textSize="14sp"/>
+            <ProgressBar android:layout_width="match_parent" android:layout_height="5dp" android:layout_marginHorizontal="18dp" android:layout_marginTop="32dp" style="?android:attr/progressBarStyleHorizontal" android:indeterminate="true" android:progressTint="@color/cyan" android:progressBackgroundTint="@color/panel2"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Initializing your creative environment…" android:textColor="@color/muted" android:textSize="11sp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="50dp" android:text="Powered by Jepong Devxyz" android:textColor="@color/text" android:textSize="13sp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Build More Possibilities" android:textColor="@color/muted" android:textSize="11sp"/>
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

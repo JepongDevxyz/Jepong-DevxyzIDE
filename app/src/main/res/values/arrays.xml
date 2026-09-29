@@ -1,0 +1,5 @@
+<resources>
+    <string-array name="theme_choices"><item>Dark (Default)</item><item>Midnight Blue</item><item>Light</item></string-array>
+    <string-array name="gradle_choices"><item>8.10.2</item><item>8.8</item></string-array>
+    <string-array name="language_choices"><item>Kotlin</item><item>Java</item><item>English</item></string-array>
+</resources>

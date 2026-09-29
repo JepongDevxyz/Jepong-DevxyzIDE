@@ -58,7 +58,7 @@ def tap_explorer_row(index: int, label: str) -> None:
 
 
 def tap_bottom_tab(index: int, label: str) -> None:
-    # Five equal-width tabs; the 62dp navigation bar sits above the system nav bar.
+    # Five equal-width tabs; leave the Android system navigation strip clear.
     tap_dp(WIDTH_DP * (index + 0.5) / 5, HEIGHT_DP - 55, label)
 
 
@@ -86,6 +86,14 @@ def run() -> None:
             raise RuntimeError("Android emulator did not finish booting")
         wait(2)
 
+    # boot_completed alone is too early on a fresh AVD: Android still runs the
+    # provisioning wizard and the launcher/System UI can ANR while the app starts.
+    adb("shell", "sh", "-c",
+        "until [ \"$(settings get global device_provisioned)\" = 1 ] && "
+        "[ \"$(settings get secure user_setup_complete)\" = 1 ]; do sleep 2; done",
+        timeout=360)
+    wait(8)  # Let the newly provisioned launcher finish its initial workspace load.
+
     adb("shell", "input", "keyevent", "82")
     adb("install", "-r", "app/build/outputs/apk/debug/app-debug.apk", timeout=180)
     adb("shell", "pm", "clear", PACKAGE)
@@ -97,9 +105,9 @@ def run() -> None:
 
     capture("launch")
 
-    # Position the plus button from the actual layout dimensions: 12dp pane padding,
-    # 48dp button, 54dp action row, 8dp pane bottom padding, and the 62dp bottom bar.
-    tap_dp(WIDTH_DP - 36, HEIGHT_DP - 121, "new project button")
+    # This app window draws behind the system navigation bar on the emulator.
+    # Plus center = display bottom - 62dp nav - 8dp pane padding - 27dp row center.
+    tap_dp(WIDTH_DP - 36, HEIGHT_DP - 97, "new project button")
     capture("new-project-dialog")
     tap_dp(WIDTH_DP / 2, HEIGHT_DP / 2, "project name field")
     adb("shell", "input", "text", "ReferenceApp")

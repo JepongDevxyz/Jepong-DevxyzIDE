@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/node_row"
     android:layout_width="match_parent"
     android:layout_height="44dp"
@@ -11,7 +12,8 @@
     <Space
         android:id="@+id/node_indent"
         android:layout_width="0dp"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        tools:ignore="Suspicious0dp" />
 
     <ImageView
         android:id="@+id/node_chevron"

@@ -166,34 +166,48 @@ class MainActivity : AppCompatActivity() {
         toolchainImporter.launch(arrayOf("application/zip", "application/octet-stream"))
     }
 
-    fun importProject(uri: Uri) {        runCatching {
-            val root = File(filesDir, "workspace/project-" + System.currentTimeMillis()).apply { mkdirs() }
-            var count = 0
-            contentResolver.openInputStream(uri)!!.use { input ->
-                ZipInputStream(input).use { z ->
-                    var e = z.nextEntry
-                    while (e != null) {
-                        val name = e.name
-                        val junk = name.startsWith("__MACOSX/") || name == "__MACOSX" || name.endsWith(".DS_Store")
-                        if (!junk) {
-                            val out = File(root, name).canonicalFile
-                            require(out.path.startsWith(root.canonicalPath + File.separator) || out == root) { "Unsafe ZIP path" }
-                            if (e.isDirectory) out.mkdirs()
-                            else { out.parentFile?.mkdirs(); out.outputStream().use { z.copyTo(it) }; count++ }
+    fun importProject(uri: Uri) {
+        val progress = AlertDialog.Builder(this)
+            .setTitle("Importing project")
+            .setMessage("Extracting ZIP…")
+            .setCancelable(false)
+            .show()
+        Thread {
+            val result = runCatching {
+                val root = File(filesDir, "workspace/project-" + System.currentTimeMillis()).apply { mkdirs() }
+                var count = 0
+                contentResolver.openInputStream(uri)!!.use { input ->
+                    ZipInputStream(input).use { z ->
+                        var e = z.nextEntry
+                        while (e != null) {
+                            val name = e.name
+                            val junk = name.startsWith("__MACOSX/") || name == "__MACOSX" || name.endsWith(".DS_Store")
+                            if (!junk) {
+                                val out = File(root, name).canonicalFile
+                                require(out.path.startsWith(root.canonicalPath + File.separator) || out == root) { "Unsafe ZIP path" }
+                                if (e.isDirectory) out.mkdirs()
+                                else { out.parentFile?.mkdirs(); out.outputStream().use { z.copyTo(it) }; count++ }
+                            }
+                            z.closeEntry()
+                            e = z.nextEntry
                         }
-                        z.closeEntry()
-                        e = z.nextEntry
                     }
                 }
+                require(count > 0) { "ZIP contained no files" }
+                val actual = detectProjectRoot(root)
+                val hasSettings = File(actual, "settings.gradle").isFile || File(actual, "settings.gradle.kts").isFile
+                var hasWrapper = File(actual, "gradlew").isFile
+                if (hasSettings && !hasWrapper) hasWrapper = generateGradleWrapper(actual)
+                Triple(actual, count, hasSettings to hasWrapper)
             }
-            require(count > 0) { "ZIP contained no files" }
-            val actual = detectProjectRoot(root)
-            selectRoot(actual)
-            val hasSettings = File(actual, "settings.gradle").isFile || File(actual, "settings.gradle.kts").isFile
-            var hasWrapper = File(actual, "gradlew").isFile
-            if (hasSettings && !hasWrapper) hasWrapper = generateGradleWrapper(actual)
-            showImportSummary(actual, count, hasSettings, hasWrapper)
-        }.onFailure { toast("Import failed: " + it.message) }
+            runOnUiThread {
+                progress.dismiss()
+                result.onSuccess { (actual, count, sh) ->
+                    selectRoot(actual)
+                    showImportSummary(actual, count, sh.first, sh.second)
+                }.onFailure { toast("Import failed: " + it.message) }
+            }
+        }.start()
     }
 
     private fun showImportSummary(actual: File, count: Int, hasSettings: Boolean, hasWrapper: Boolean) {

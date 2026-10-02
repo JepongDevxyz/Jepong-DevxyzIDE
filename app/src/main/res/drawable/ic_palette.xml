@@ -2,8 +2,8 @@
     android:width="24dp" android:height="24dp"
     android:viewportWidth="24" android:viewportHeight="24">
     <path android:fillColor="#12B8FF" android:pathData="M12,2 C6.5,2 2,6.5 2,12 C2,17.5 6.5,22 12,22 C13.5,22 14.5,21 14.5,19.5 C14.5,18 13.5,17 13.5,15.8 C13.5,14.3 14.7,13.5 16,13.5 L18.5,13.5 C20.5,13.5 22,11.8 22,9.5 C22,5.4 17.5,2 12,2 Z" />
-    <circle android:fillColor="#F87171" android:cx="7.5" android:cy="10.5" android:r="1.8" />
-    <circle android:fillColor="#F5A623" android:cx="10.5" android:cy="7" android:r="1.8" />
-    <circle android:fillColor="#22C55E" android:cx="15" android:cy="7" android:r="1.8" />
-    <circle android:fillColor="#F4F8FC" android:cx="7" android:cy="15" android:r="1.8" />
+    <path android:fillColor="#F87171" android:pathData="M5.7,10.5 a1.8,1.8 0 1,0 3.6,0 a1.8,1.8 0 1,0 -3.6,0" />
+    <path android:fillColor="#F5A623" android:pathData="M8.7,7 a1.8,1.8 0 1,0 3.6,0 a1.8,1.8 0 1,0 -3.6,0" />
+    <path android:fillColor="#22C55E" android:pathData="M13.2,7 a1.8,1.8 0 1,0 3.6,0 a1.8,1.8 0 1,0 -3.6,0" />
+    <path android:fillColor="#F4F8FC" android:pathData="M5.2,15 a1.8,1.8 0 1,0 3.6,0 a1.8,1.8 0 1,0 -3.6,0" />
 </vector>

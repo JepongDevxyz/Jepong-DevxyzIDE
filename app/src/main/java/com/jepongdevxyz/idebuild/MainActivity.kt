@@ -168,31 +168,75 @@ class MainActivity : AppCompatActivity() {
 
     fun importProject(uri: Uri) {        runCatching {
             val root = File(filesDir, "workspace/project-" + System.currentTimeMillis()).apply { mkdirs() }
+            var count = 0
             contentResolver.openInputStream(uri)!!.use { input ->
                 ZipInputStream(input).use { z ->
                     var e = z.nextEntry
                     while (e != null) {
-                        val out = File(root, e.name).canonicalFile
-                        require(out.path.startsWith(root.canonicalPath + File.separator) || out == root) { "Unsafe ZIP path" }
-                        if (e.isDirectory) out.mkdirs()
-                        else { out.parentFile?.mkdirs(); out.outputStream().use { z.copyTo(it) } }
+                        val name = e.name
+                        val junk = name.startsWith("__MACOSX/") || name == "__MACOSX" || name.endsWith(".DS_Store")
+                        if (!junk) {
+                            val out = File(root, name).canonicalFile
+                            require(out.path.startsWith(root.canonicalPath + File.separator) || out == root) { "Unsafe ZIP path" }
+                            if (e.isDirectory) out.mkdirs()
+                            else { out.parentFile?.mkdirs(); out.outputStream().use { z.copyTo(it) }; count++ }
+                        }
                         z.closeEntry()
                         e = z.nextEntry
                     }
                 }
             }
+            require(count > 0) { "ZIP contained no files" }
             val actual = detectProjectRoot(root)
             selectRoot(actual)
-            toast("Project imported")
+            val hasSettings = File(actual, "settings.gradle").isFile || File(actual, "settings.gradle.kts").isFile
+            var hasWrapper = File(actual, "gradlew").isFile
+            if (hasSettings && !hasWrapper) hasWrapper = generateGradleWrapper(actual)
+            showImportSummary(actual, count, hasSettings, hasWrapper)
         }.onFailure { toast("Import failed: " + it.message) }
+    }
+
+    private fun showImportSummary(actual: File, count: Int, hasSettings: Boolean, hasWrapper: Boolean) {
+        val tc = ToolchainManager(filesDir).inspect(actual)
+        val msg = StringBuilder()
+            .append("Files imported: ").append(count).append("\n")
+            .append("Project root: ").append(actual.name).append("\n")
+            .append("Gradle project: ").append(if (hasSettings) "yes" else "NO — settings.gradle not found").append("\n")
+            .append("Gradle wrapper: ")
+            .append(if (hasWrapper) "found" else if (hasSettings) "generated" else "n/a").append("\n")
+            .append("Toolchain: ").append(if (tc.ready) "ready" else "NOT imported").toString()
+        val dlg = AlertDialog.Builder(this).setTitle("Project imported")
+            .setMessage(msg)
+            .setPositiveButton("Open Build") { _, _ -> openBuildTab() }
+            .setNegativeButton("Close", null)
+        if (!tc.ready) dlg.setNeutralButton("Import toolchain") { _, _ -> promptToolchainImport() }
+        dlg.show()
+    }
+
+    fun openBuildTab() {
+        showTab(BuildFragment(), "build")
+        b.bottomNav.selectedItemId = R.id.nav_build
+    }
+
+    fun toolchainSummary(): Pair<Boolean, String> {
+        val c = ToolchainManager(filesDir).inspect(projectRoot)
+        return c.ready to c.report
+    }
+
+    fun promptToolchainImport() {
+        AlertDialog.Builder(this).setTitle("Import Toolchain ZIP")
+            .setMessage("The toolchain ZIP provides the on-device build tools (import once, reused by every project):\n\n• jdk/ — JDK 17 (jdk/bin/java)\n• android-sdk/ — platforms/android-35/android.jar + build-tools/35.0.0/aapt2\n• gradle/ — Gradle distribution (optional, recommended)\n\nAbout 1 GB unpacked.")
+            .setPositiveButton("Select ZIP") { _, _ -> launchToolchainImporter() }
+            .setNegativeButton("Cancel", null).show()
     }
 
     private fun detectProjectRoot(root: File): File {
         if (File(root, "settings.gradle").isFile || File(root, "settings.gradle.kts").isFile) return root
-        val candidates = root.walkTopDown().maxDepth(3)
-            .filter { it.isDirectory && (File(it, "settings.gradle").isFile || File(it, "settings.gradle.kts").isFile) }
+        val candidates = root.walkTopDown().maxDepth(4)
+            .filter { it.isDirectory && it.name != "__MACOSX" && (File(it, "settings.gradle").isFile || File(it, "settings.gradle.kts").isFile) }
+            .sortedBy { it.relativeTo(root).path.length }
             .toList()
-        return if (candidates.size == 1) candidates.first() else root
+        return candidates.firstOrNull() ?: root
     }
 
     fun selectRoot(r: File) {
@@ -253,6 +297,7 @@ class MainActivity : AppCompatActivity() {
             File(app, "build.gradle.kts").writeText("plugins { id(\"com.android.application\"); id(\"org.jetbrains.kotlin.android\") }\nandroid { namespace=\"com.example.app\"; compileSdk=35; defaultConfig { applicationId=\"com.example.app\"; minSdk=26; targetSdk=35; versionCode=1; versionName=\"1.0\" } }")
             val src = File(app, "src/main/java/com/example/app").apply { mkdirs() }
             File(src, "MainActivity.kt").writeText("package com.example.app\nimport android.app.Activity\nclass MainActivity:Activity()")
+            generateGradleWrapper(r)
             selectRoot(r)
             toast("Project created")
         }.onFailure { toast("Create failed: " + it.message) }
@@ -278,8 +323,16 @@ class MainActivity : AppCompatActivity() {
         }, title))
     }
 
-    fun latestApk(): File? =
-        projectRoot?.walkTopDown()?.filter { it.isFile && it.extension.equals("apk", true) }?.maxByOrNull { it.lastModified() }
+    fun latestApk(): File? {
+        val r = projectRoot ?: return null
+        val outDir = File(r, "app/build/outputs/apk")
+        val fresh = outDir.takeIf { it.isDirectory }?.walkTopDown()
+            ?.filter { it.isFile && it.extension.equals("apk", true) }
+            ?.maxByOrNull { it.lastModified() }
+        if (fresh != null) return fresh
+        return r.walkTopDown().filter { it.isFile && it.extension.equals("apk", true) }
+            ?.maxByOrNull { it.lastModified() }
+    }
 
     fun installLatestApk() {
         val apk = latestApk() ?: return toast("No generated APK found")
@@ -308,11 +361,26 @@ class MainActivity : AppCompatActivity() {
             return showLog("BUILD BLOCKED", "No settings.gradle/settings.gradle.kts found at project root. Re-import a complete Android/Gradle project.")
         val tc = ToolchainManager(filesDir)
         val check = tc.inspect(r)
-        if (!check.ready) return showLog("Toolchain diagnostics", check.report)
-        val env = tc.environment()
+        if (!check.ready) return showLog("Toolchain diagnostics", check.report + "\n\nImport a toolchain ZIP first: Build tab → Import Toolchain ZIP.")
+        val env = tc.environment().toMutableMap()
         val aapt2 = tc.aapt2Path()
+        // Resolve Gradle: project wrapper → toolchain Gradle → generate a bootstrap wrapper.
+        val invoke: String
+        val wrapper = File(r, "gradlew")
+        val tcGradle = tc.gradleBin()
+        if (wrapper.isFile) {
+            if (tcGradle != null) env["DEVXYZ_GRADLE_BIN"] = tcGradle.absolutePath
+            invoke = "chmod +x ./gradlew && ./gradlew"
+        } else if (tcGradle != null) {
+            invoke = "\"" + tcGradle.absolutePath + "\""
+        } else {
+            if (!generateGradleWrapper(r))
+                return showLog("BUILD BLOCKED", "No Gradle wrapper in the project and no Gradle in the toolchain.\n\nFix: import a toolchain ZIP that contains gradle/, or add a gradlew wrapper to the project.")
+            showLog("Gradle wrapper", "No gradlew found — generated a bootstrap wrapper.\nFirst build downloads Gradle 8.10.2 (~130 MB, needs internet).")
+            invoke = "chmod +x ./gradlew && ./gradlew"
+        }
         buildStartMs = System.currentTimeMillis()
-        runCommand("chmod +x ./gradlew && ./gradlew --no-daemon -Pandroid.aapt2FromMavenOverride=\"$aapt2\" assembleDebug --stacktrace", r, env) { code, out ->
+        runCommand("$invoke --no-daemon -Pandroid.aapt2FromMavenOverride=\"$aapt2\" assembleDebug --stacktrace", r, env) { code, out ->
             lastBuildCode = code
             lastBuildLog = out
             if (code == 0) {
@@ -327,6 +395,22 @@ class MainActivity : AppCompatActivity() {
             } else showLog("BUILD FAILED", out)
         }
     }
+
+    /** Writes a bootstrap `gradlew` (+ wrapper properties) into a project that lacks one. */
+    fun generateGradleWrapper(r: File): Boolean = runCatching {
+        File(r, "gradle/wrapper").apply { mkdirs() }
+        File(r, "gradle/wrapper/gradle-wrapper.properties").writeText(
+            "distributionBase=GRADLE_USER_HOME\n" +
+                    "distributionPath=wrapper/dists\n" +
+                    "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip\n" +
+                    "networkTimeout=10000\n" +
+                    "validateDistributionUrl=true\n" +
+                    "zipStoreBase=GRADLE_USER_HOME\n" +
+                    "zipStorePath=wrapper/dists\n"
+        )
+        File(r, "gradlew").writeText(GRADLEW_SCRIPT).also { it.setExecutable(true) }
+        true
+    }.getOrDefault(false)
 
     private fun showBuildSuccess(apk: File, log: String) {
         AlertDialog.Builder(this).setTitle("BUILD SUCCESSFUL")
@@ -427,7 +511,7 @@ class MainActivity : AppCompatActivity() {
                     3 -> terminal()
                     4 -> gitStatus()
                     5 -> installLatestApk()
-                    6 -> toolchainImporter.launch(arrayOf("application/zip", "application/octet-stream"))
+                    6 -> promptToolchainImport()
                     7 -> {
                         val r = projectRoot
                         showLog("Toolchain Diagnostics", ToolchainManager(filesDir).inspect(r).report)
@@ -683,4 +767,42 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
+
+    companion object {
+        /** Bootstrap Gradle launcher written into projects that lack a wrapper. */
+        private val GRADLEW_SCRIPT = """
+            #!/bin/sh
+            # Generated by DevxyzIDE - Gradle launcher for this project.
+            # 1) Uses the imported toolchain Gradle when DEVXYZ_GRADLE_BIN is set.
+            # 2) Otherwise downloads Gradle 8.10.2 on first run (needs internet + curl/wget + unzip).
+            set -e
+            if [ -n "${'$'}DEVXYZ_GRADLE_BIN" ] && [ -x "${'$'}DEVXYZ_GRADLE_BIN" ]; then
+              exec "${'$'}DEVXYZ_GRADLE_BIN" "${'$'}@"
+            fi
+            VER="8.10.2"
+            GUH="${'$'}{GRADLE_USER_HOME:-${'$'}HOME/.gradle}"
+            DEST="${'$'}GUH/wrapper/dists/gradle-${'$'}VER-bin"
+            BIN="${'$'}DEST/gradle-${'$'}VER/bin/gradle"
+            if [ ! -x "${'$'}BIN" ]; then
+              echo "DevxyzIDE: downloading Gradle ${'$'}VER (first build only)..."
+              URL="https://services.gradle.org/distributions/gradle-${'$'}VER-bin.zip"
+              mkdir -p "${'$'}DEST"
+              TMP="${'$'}DEST/gradle-${'$'}VER-bin.zip"
+              if command -v curl >/dev/null 2>&1; then
+                curl -L --fail -o "${'$'}TMP" "${'$'}URL"
+              elif command -v wget >/dev/null 2>&1; then
+                wget -O "${'$'}TMP" "${'$'}URL"
+              else
+                echo "DevxyzIDE: no curl/wget on this device. Import a toolchain ZIP containing gradle/ instead." >&2
+                exit 1
+              fi
+              if ! command -v unzip >/dev/null 2>&1; then
+                echo "DevxyzIDE: no unzip on this device. Import a toolchain ZIP containing gradle/ instead." >&2
+                exit 1
+              fi
+              unzip -q -o "${'$'}TMP" -d "${'$'}DEST" && rm -f "${'$'}TMP"
+            fi
+            exec "${'$'}BIN" "${'$'}@"
+            """.trimIndent()
+    }
 }

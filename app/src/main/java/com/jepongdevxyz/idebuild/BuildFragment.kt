@@ -51,18 +51,34 @@ class BuildFragment : Fragment() {
 
         b.btnRunBuild.setOnClickListener { act().buildAndRun() }
         b.btnInstallApk.setOnClickListener { act().installLatestApk() }
+        b.btnImportToolchain.setOnClickListener { act().promptToolchainImport() }
         b.btnOpenFolder.setOnClickListener {
             val dir = act().lastBuildApk?.parentFile ?: act().projectRoot
             if (dir != null) act().openFolderView(dir) else act().toast("No project open")
         }
 
         renderBuildState()
+        renderToolchain()
     }
 
     override fun onResume() {
         super.onResume()
         act().buildListener = { if (_b != null) renderBuildState() }
-        if (_b != null) renderBuildState()
+        if (_b != null) { renderBuildState(); renderToolchain() }
+    }
+
+    private fun renderToolchain() {
+        val (ready, report) = act().toolchainSummary()
+        if (ready) {
+            b.toolchainStatus.text = "Ready — JDK 17, Android SDK 35, aapt2."
+            b.toolchainStatus.setTextColor(requireContext().getColor(R.color.green))
+            b.btnImportToolchain.visibility = View.GONE
+        } else {
+            val firstMiss = report.lines().firstOrNull { it.startsWith("MISS") } ?: "Toolchain not imported."
+            b.toolchainStatus.text = firstMiss
+            b.toolchainStatus.setTextColor(requireContext().getColor(R.color.red))
+            b.btnImportToolchain.visibility = View.VISIBLE
+        }
     }
 
     override fun onPause() {

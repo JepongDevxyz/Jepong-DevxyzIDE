@@ -408,7 +408,10 @@ class MainActivity : AppCompatActivity() {
                     "zipStoreBase=GRADLE_USER_HOME\n" +
                     "zipStorePath=wrapper/dists\n"
         )
-        File(r, "gradlew").writeText(GRADLEW_SCRIPT).also { it.setExecutable(true) }
+        File(r, "gradlew").apply {
+            writeText(GRADLEW_SCRIPT)
+            setExecutable(true)
+        }
         true
     }.getOrDefault(false)
 

@@ -1,0 +1,23 @@
+<resources>
+    <string-array name="theme_options">
+        <item>Dark (Default)</item>
+        <item>Light</item>
+    </string-array>
+    <string-array name="gradle_versions">
+        <item>8.8</item>
+        <item>8.7</item>
+        <item>8.5</item>
+    </string-array>
+    <string-array name="jdk_options">
+        <item>Embedded (17)</item>
+        <item>System Default</item>
+    </string-array>
+    <string-array name="sdk_options">
+        <item>Built-in</item>
+        <item>Custom Path…</item>
+    </string-array>
+    <string-array name="language_options">
+        <item>English</item>
+        <item>Filipino</item>
+    </string-array>
+</resources>

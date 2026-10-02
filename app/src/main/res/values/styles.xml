@@ -1,1 +1,15 @@
-<resources><style name="Theme.DevxyzIDE" parent="Theme.MaterialComponents.DayNight.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:windowBackground">@color/navy</item><item name="android:navigationBarColor">@color/navy</item><item name="android:statusBarColor">@color/navy</item><item name="colorPrimary">@color/cyan</item><item name="colorAccent">@color/cyan</item><item name="android:windowLightStatusBar">false</item></style></resources>
+<resources>
+    <style name="Theme.DevxyzIDE" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@color/navy</item>
+        <item name="android:navigationBarColor">@color/navy</item>
+        <item name="android:statusBarColor">@color/navy</item>
+        <item name="colorPrimary">@color/cyan</item>
+        <item name="colorAccent">@color/cyan</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <style name="Theme.DevxyzIDE.Splash" parent="Theme.DevxyzIDE">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+</resources>

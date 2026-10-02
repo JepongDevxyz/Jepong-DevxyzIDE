@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">DevxyzIDE</string>
+    <string name="tagline_code">CODE • BUILD • CREATE</string>
+    <string name="tagline_by">BY JEPONG DEVXYZ</string>
+    <string name="splash_init">Initializing your creative environment…</string>
+    <string name="splash_powered">Powered by</string>
+    <string name="splash_owner">Jepong Devxyz</string>
+    <string name="splash_possib">Build More Possibilities</string>
+</resources>

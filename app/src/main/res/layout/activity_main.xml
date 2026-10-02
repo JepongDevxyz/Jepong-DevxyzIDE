@@ -1,9 +1,30 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@color/navy">
- <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:paddingHorizontal="16dp"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="DevxyzIDE" android:textColor="@color/text" android:textStyle="bold" android:textSize="20sp"/><Button android:id="@+id/importBtn" android:layout_width="wrap_content" android:layout_height="44dp" android:text="Import" android:textAllCaps="false"/></LinearLayout>
- <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:padding="8dp">
-  <LinearLayout android:id="@+id/explorerPane" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="0.38" android:orientation="vertical" android:background="@drawable/panel" android:padding="8dp"><TextView android:layout_width="match_parent" android:layout_height="40dp" android:gravity="center_vertical" android:text="PROJECT EXPLORER" android:textColor="@color/text" android:textStyle="bold"/><ListView android:id="@+id/fileList" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:dividerHeight="0dp"/></LinearLayout>
-  <Space android:layout_width="8dp" android:layout_height="1dp"/>
-  <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="0.62" android:orientation="vertical" android:background="@drawable/panel"><TextView android:id="@+id/tabTitle" android:layout_width="match_parent" android:layout_height="42dp" android:paddingHorizontal="12dp" android:gravity="center_vertical" android:text="Welcome" android:textColor="@color/cyan" android:textStyle="bold"/><EditText android:id="@+id/editor" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="top|start" android:padding="12dp" android:fontFamily="monospace" android:textSize="13sp" android:textColor="@color/text" android:textColorHint="@color/muted" android:hint="Open or import a project to start coding…" android:background="@android:color/transparent" android:inputType="textMultiLine|textNoSuggestions" android:scrollbars="vertical|horizontal"/></LinearLayout>
- </LinearLayout>
- <LinearLayout android:layout_width="match_parent" android:layout_height="62dp" android:gravity="center" android:orientation="horizontal"><Button android:id="@+id/filesBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Files" android:textAllCaps="false"/><Button android:id="@+id/searchBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Search" android:textAllCaps="false"/><Button android:id="@+id/saveBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Save" android:textAllCaps="false"/><Button android:id="@+id/buildBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Build" android:textAllCaps="false"/><Button android:id="@+id/toolsBtn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Tools" android:textAllCaps="false"/></LinearLayout>
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/navy">
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider" />
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@color/navy"
+        app:menu="@menu/bottom_nav"
+        app:itemIconTint="@color/nav_item_tint"
+        app:itemTextColor="@color/nav_item_tint"
+        app:labelVisibilityMode="labeled" />
+
 </LinearLayout>

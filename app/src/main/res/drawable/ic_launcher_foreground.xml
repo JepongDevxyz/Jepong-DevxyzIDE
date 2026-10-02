@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- neon blue <D> lettermark -->
+    <path android:fillColor="#12B8FF" android:pathData="M30,34 L14,54 L30,74 L38,66 L28,54 L38,42 Z" />
+    <path android:fillColor="#12B8FF" android:pathData="M78,34 L94,54 L78,74 L70,66 L80,54 L70,42 Z" />
+    <path android:fillColor="#12B8FF" android:pathData="M46,32 L46,76 L62,76 C74,76 78,64 78,54 C78,44 74,32 62,32 Z M54,40 L54,68 L61,68 C68,68 70,61 70,54 C70,47 68,40 61,40 Z" />
+    <path android:fillColor="#5EB7FF" android:pathData="M46,32 L46,76 L54,76 L54,32 Z" android:alpha="0.55"/>
+    <!-- android robot head peeking above the D -->
+    <path android:fillColor="#F4F8FC" android:pathData="M54,8 C46,8 40,14 40,21 L40,26 L68,26 L68,21 C68,14 62,8 54,8 Z" />
+    <path android:fillColor="#F4F8FC" android:pathData="M45,9 L42,4 L44.5,3 L48,8 Z" />
+    <path android:fillColor="#F4F8FC" android:pathData="M63,9 L66,4 L63.5,3 L60,8 Z" />
+    <circle android:fillColor="#050B12" android:cx="49" android:cy="19" android:r="2.2" />
+    <circle android:fillColor="#050B12" android:cx="59" android:cy="19" android:r="2.2" />
+</vector>
